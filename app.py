@@ -108,90 +108,138 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": round(base["Run"] * fator, 1)
     }
 
-# --- ALGORITMO MULTI-CATEGORIA (CADA EXERCÍCIO PONTUA EM TODAS AS SUAS FUNÇÕES BIOMECÂNICAS) ---
+# --- MOTOR AVANÇADO DE ANÁLISE DE ESTRUTURAS (EMOM / AMRAP / ROUNDS / CHIPPER) ---
 def extrair_volume_acumulado(todos_textos_semana):
-    texto = " ".join(todos_textos_semana).lower()
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
     
-    linhas = texto.split("\n")
-    for linha in linhas:
-        linha_limpa = linha.strip()
-        if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
+    for bloco_texto in todos_textos_semana:
+        if not bloco_texto.strip():
             continue
             
-        # 1. LEITURA DE CORRIDA (M / KM)
-        if "run" in linha_limpa or "corrida" in linha_limpa or "km" in linha_limpa:
-            m_metros = re.findall(r'(\d+)\s*m\b', linha_limpa)
-            if m_metros:
-                vol["Run"] += sum([int(m) for m in m_metros]) / 1000.0
-            m_kms = re.findall(r'(\d+(?:\.\d+)?)\s*km\b', linha_limpa)
-            if m_kms:
-                vol["Run"] += sum([float(k) for k in m_kms])
+        linhas = [l.strip() for l in bloco_texto.split("\n") if l.strip()]
+        
+        # 1. Identifica Formato Estrutural
+        minutos_emom = 0
+        minutos_amrap = 0
+        num_rounds = 1
+        intervalo_emom = 1
+        
+        for l in linhas:
+            l_low = l.lower()
+            m_emom = re.search(r'e(2|3)?mom\s*(\d+)', l_low)
+            if m_emom:
+                minutos_emom = int(m_emom.group(2))
+                if m_emom.group(1):
+                    intervalo_emom = int(m_emom.group(1))
+                break
+                
+            m_amrap = re.search(r'amrap\s*(\d+)', l_low)
+            if m_amrap:
+                minutos_amrap = int(m_amrap.group(1))
+                break
+                
+            m_rnds = re.search(r'(\d+)\s*(?:rounds|rnds|sets|series|séries|rodadas)', l_low)
+            if m_rnds:
+                num_rounds = int(m_rnds.group(1))
+                break
 
-        reps = 0
-        m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_limpa)
-        if m_mult:
-            for s, r in m_mult:
-                reps += int(s) * int(r)
-        else:
-            esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_limpa)
-            if esquema_hifen:
-                for a, b, c in esquema_hifen:
-                    reps += int(a) + int(b) + int(c)
+        # Filtra linhas de exercícios válidas
+        linhas_ex = []
+        for l in linhas:
+            l_low = l.lower()
+            if any(k in l_low for k in ["rx:", "scaled:", "emom", "amrap", "for time", "cap "]):
+                continue
+            # Trata opções alternadas (Ex: 5 Bar Muscle Up OR 10 Pull ups -> Pega o RX principal)
+            if " or " in l_low:
+                l = l_low.split(" or ")[0]
+            linhas_ex.append(l)
+
+        qtd_exercicios = len(linhas_ex) if len(linhas_ex) > 0 else 1
+
+        # Calcula multiplicador por rodada/round
+        multiplicador_global = 1
+        if minutos_emom > 0:
+            multiplicador_global = max(1, (minutos_emom // intervalo_emom) // qtd_exercicios)
+        elif num_rounds > 1:
+            multiplicador_global = num_rounds
+        elif minutos_amrap > 0:
+            multiplicador_global = max(1, minutos_amrap // 3)
+
+        # Processa cada linha de exercício com seu multiplicador do formato
+        for linha in linhas_ex:
+            linha_limpa = linha.lower().strip()
+            if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
+                continue
+
+            # LEITURA DE CORRIDA (M / KM)
+            if "run" in linha_limpa or "corrida" in linha_limpa or "km" in linha_limpa:
+                m_metros = re.findall(r'(\d+)\s*m\b', linha_limpa)
+                if m_metros:
+                    vol["Run"] += (sum([int(m) for m in m_metros]) / 1000.0) * multiplicador_global
+                m_kms = re.findall(r'(\d+(?:\.\d+)?)\s*km\b', linha_limpa)
+                if m_kms:
+                    vol["Run"] += sum([float(k) for k in m_kms]) * multiplicador_global
+
+            reps_base = 0
+            m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_limpa)
+            if m_mult:
+                for s, r in m_mult:
+                    reps_base += int(s) * int(r)
             else:
-                nums = re.findall(r'\b(\d+)\b', linha_limpa)
-                if nums:
-                    reps_encontradas = [int(n) for n in nums if int(n) <= 300]
-                    if reps_encontradas:
-                        reps = sum(reps_encontradas)
+                esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_limpa)
+                if esquema_hifen:
+                    for a, b, c in esquema_hifen:
+                        reps_base += int(a) + int(b) + int(c)
+                else:
+                    nums = re.findall(r'\b(\d+)\b', linha_limpa)
+                    if nums:
+                        reps_encontradas = [int(n) for n in nums if int(n) <= 300]
+                        if reps_encontradas:
+                            reps_base = sum(reps_encontradas)
 
-        if reps == 0:
-            continue
+            if reps_base == 0:
+                continue
 
-        # MATRIZ MULTI-CATEGORIA INDEPENDENTE
+            # Aplica o multiplicador do EMOM / Rounds às repetições da linha
+            reps_totais = reps_base * multiplicador_global
 
-        # 1. SQUAT (Gasta cota de agachamento)
-        if any(k in linha_limpa for k in [
-            "squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", 
-            "lunge", "lunges", "passada", "pistol", "squat clean", "squat snatch", "front squat", "back squat", "ohs"
-        ]):
-            vol["Squat"] += reps
+            # MATRIZ MULTI-CATEGORIA COMPLETA COM CADASTRADO AMPLIADO
 
-        # 2. HINGE (Cadeia posterior / Quadril)
-        if any(k in linha_limpa for k in [
-            "deadlift", "terra", "rdl", "snatch", "clean", "swing", "good morning", "hip thrust"
-        ]):
-            vol["Hinge"] += reps
+            if any(k in linha_limpa for k in [
+                "squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", 
+                "lunge", "lunges", "passada", "pistol", "squat clean", "squat snatch", "front squat", "back squat", "ohs"
+            ]):
+                vol["Squat"] += reps_totais
 
-        # 3. PUSH (Empurrar superior)
-        if any(k in linha_limpa for k in [
-            "push", "press", "jerk", "thruster", "hspu", "dip", "dips", "bench", "flexao", "flexão", "supino", "wall ball", "wallball"
-        ]):
-            vol["Push"] += reps
+            if any(k in linha_limpa for k in [
+                "deadlift", "terra", "rdl", "snatch", "clean", "swing", "good morning", "hip thrust"
+            ]):
+                vol["Hinge"] += reps_totais
 
-        # 4. PULL (Puxada superior)
-        if any(k in linha_limpa for k in [
-            "pull", "pullup", "c2b", "chest to bar", "muscle up", "muscle-up", "row", "remada", "rope climb", "puxada"
-        ]):
-            vol["Pull"] += reps
+            if any(k in linha_limpa for k in [
+                "push", "press", "jerk", "thruster", "hspu", "dip", "dips", "bench", "flexao", "flexão", "supino", "wall ball", "wallball"
+            ]):
+                vol["Push"] += reps_totais
 
-        # 5. CORE (Flexão e estabilização de tronco)
-        if any(k in linha_limpa for k in [
-            "toes to bar", "ttb", "knees to elbow", "kte", "sit up", "situp", "v-up", "hollow", "plank", "prancha", "l-sit", "abmat"
-        ]):
-            vol["Core"] += reps
+            if any(k in linha_limpa for k in [
+                "pull", "pullup", "c2b", "chest to bar", "muscle up", "muscle-up", "bmu", "rmu", "row", "remada", "rope climb", "puxada"
+            ]):
+                vol["Pull"] += reps_totais
 
-        # 6. SNATCH (LPO Específico)
-        if any(k in linha_limpa for k in [
-            "snatch", "arranco", "snatch balance"
-        ]):
-            vol["Snatch"] += reps
+            if any(k in linha_limpa for k in [
+                "toes to bar", "ttb", "knees to elbow", "kte", "sit up", "situp", "v-up", "hollow", "plank", "prancha", "l-sit", "abmat", "ghd"
+            ]):
+                vol["Core"] += reps_totais
 
-        # 7. CLEAN & JERK (LPO Específico)
-        if any(k in linha_limpa for k in [
-            "clean", "jerk", "arremesso", "clean & jerk", "clean and jerk"
-        ]):
-            vol["Clean & Jerk"] += reps
+            if any(k in linha_limpa for k in [
+                "snatch", "arranco", "snatch balance"
+            ]):
+                vol["Snatch"] += reps_totais
+
+            if any(k in linha_limpa for k in [
+                "clean", "jerk", "arremesso", "clean & jerk", "clean and jerk"
+            ]):
+                vol["Clean & Jerk"] += reps_totais
 
     return vol
 
@@ -378,10 +426,10 @@ dias_semana = [
 if "treinos_semana" not in st.session_state:
     st.session_state["treinos_semana"] = {d["day"]: "" for d in dias_semana}
 
-# Processa o volume acumulado de toda a semana
+# Processa o volume acumulado da semana considerando a lógica de EMOM, AMRAP e Rounds
 vol_usado = extrair_volume_acumulado(list(st.session_state["treinos_semana"].values()))
 
-# TABELA LATERAL COM MULTI-CATEGORIA INTEGRADA
+# TABELA LATERAL COM VALORES RECALCULADOS EM TEMPO REAL
 tabela_volume = pd.DataFrame({
     "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
     "Target": [
