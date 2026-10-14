@@ -17,7 +17,6 @@ st.markdown("""
 
 # --- CARREGAMENTO DIRETO DA LOGO DA SUA PASTA ---
 def carregar_logo():
-    # Lista de possíveis nomes da logo na pasta raiz
     nomes_possiveis = [
         "Logo_e_mascote[1].png", 
         "Logo_e_mascote.png", 
@@ -31,7 +30,6 @@ def carregar_logo():
             logo_file = nome
             break
             
-    # Se não achar pelos nomes exatos, busca qualquer imagem com 'logo' ou 'mascote'
     if not logo_file:
         arquivos = glob.glob("*.png") + glob.glob("*.jpg") + glob.glob("*.jpeg")
         for f in arquivos:
@@ -57,7 +55,6 @@ def carregar_logo():
     else:
         st.sidebar.title("🏋️‍♂️ ALPHA IRON ATHLETICS")
 
-# Executa o carregamento da logo na barra lateral
 carregar_logo()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
@@ -228,13 +225,24 @@ semana = st.sidebar.selectbox("Periodization Week", [
 ])
 
 st.sidebar.markdown("---")
-st.sidebar.header("📊 MCVS & IACS Control")
+st.sidebar.header("📊 MCVS & Volume Control")
 
-vol_squat = st.sidebar.number_input("Squat Volume (Ideal: 120-180)", value=140)
-vol_hinge = st.sidebar.number_input("Hinge / LPO Volume (Ideal: 80-120)", value=90)
-vol_push = st.sidebar.number_input("Push Volume (Ideal: 60-100)", value=70)
-vol_pull = st.sidebar.number_input("Pull Volume (Ideal: 60-100)", value=75)
-vol_run = st.sidebar.number_input("Running Volume KM (Ideal: 6-12 km)", value=8.0)
+vol_squat = st.sidebar.number_input("Squat Volume", value=140)
+vol_hinge = st.sidebar.number_input("Hinge / LPO Volume", value=90)
+vol_push = st.sidebar.number_input("Push Volume", value=70)
+vol_pull = st.sidebar.number_input("Pull Volume", value=75)
+vol_run = st.sidebar.number_input("Running Volume (KM)", value=8.0)
+
+# Tabela de Comparação de Volume Mínimo, Ideal e Máximo conforme MCVS Metodológica
+mcvs_df = pd.DataFrame({
+    "Pattern": ["Squat", "Hinge / LPO", "Push", "Pull", "Run (KM)"],
+    "Current": [vol_squat, vol_hinge, vol_push, vol_pull, vol_run],
+    "Ideal Target": ["120 - 180", "80 - 120", "60 - 100", "60 - 100", "6 - 12 km"],
+    "Max Limit": ["220", "150", "120", "120", "15 km"]
+})
+
+st.sidebar.markdown("### 📋 Volume Control (MCVS)")
+st.sidebar.table(mcvs_df)
 
 # Cálculo IACS
 iacs_score = (vol_squat * 0.15) + (vol_hinge * 0.2) + (vol_push * 0.15) + (vol_pull * 0.15) + (vol_run * 3)
@@ -275,29 +283,130 @@ for i, tab in enumerate(tabs):
         with col1:
             st.markdown("### 📋 Session Structure (60 min)")
             
+            # --- SEGUNDA: HYROX ---
             if day_info["day"] == "Monday":
                 st.info("🏃 **HYROX Session:** Running + Functional Stations")
-                w_input = st.text_area("Warm-Up (10')", "Dynamic Mobility\nCore & Hip Activation\nLight Run", height=100, key=f"hy_w_{i}")
+                
+                c_time1, c_text1 = st.columns([1, 3])
+                with c_time1:
+                    t_w = st.number_input("Warm-Up (min)", 1, 60, 10, key=f"t_hy_w_{i}")
+                with c_text1:
+                    w_input = st.text_area(f"Warm-Up ({t_w}')", "Dynamic Mobility\nCore & Hip Activation\nLight Run", height=90, key=f"hy_w_{i}")
+                
                 s_input = "" 
                 l_input = ""
-                m_input = st.text_area("HYROX Main Block (35-40')", "Alternating: Running + Functional Station (Burpee Broad Jump / Carries / Sled / Wall Ball)", height=150, key=f"hy_m_{i}")
-                r_input = st.text_area("Mobility (5')", "Light Walk & Guided Breathing / Joint Mobility", height=80, key=f"hy_r_{i}")
-            
+                
+                c_time2, c_text2 = st.columns([1, 3])
+                with c_time2:
+                    t_m = st.number_input("Main Block (min)", 1, 60, 40, key=f"t_hy_m_{i}")
+                with c_text2:
+                    m_input = st.text_area(f"HYROX Main Block ({t_m}')", "Alternating: Running + Functional Station (Burpee Broad Jump / Carries / Sled / Wall Ball)", height=140, key=f"hy_m_{i}")
+                
+                c_time3, c_text3 = st.columns([1, 3])
+                with c_time3:
+                    t_r = st.number_input("Mobility (min)", 1, 60, 10, key=f"t_hy_r_{i}")
+                with c_text3:
+                    r_input = st.text_area(f"Mobility ({t_r}')", "Light Walk & Guided Breathing / Joint Mobility", height=80, key=f"hy_r_{i}")
+                
+                total_time = t_w + t_m + t_r
+
+            # --- SEXTA: ATHX ---
             elif day_info["day"] == "Friday":
                 st.info("🔥 **ATHX Session:** Fixed Structure (Strength Max + Endurance + MetCon X)")
-                w_input = st.text_area("Warm-Up (10')", "Dynamic Activation\nLight Run\nJoint Drills", height=100, key=f"athx_w_{i}")
-                s_input = st.text_area("Strength Max (15')", "5 RM Deadlift or 3 RM Front Squat", height=100, key=f"athx_s_{i}")
-                l_input = st.text_area("Endurance (15')", "Max Burpees Broad Jump / Max Run / Farmer Carry", height=100, key=f"athx_e_{i}")
-                m_input = st.text_area("MetCon X (20')", "For Time / AMRAP High Intensity under fatigue", height=120, key=f"athx_m_{i}")
-                r_input = st.text_area("Mobility (10')", "Myofascial Release / Stretching", height=80, key=f"athx_r_{i}")
                 
+                c_time1, c_text1 = st.columns([1, 3])
+                with c_time1:
+                    t_w = st.number_input("Warm-Up (min)", 1, 60, 10, key=f"t_athx_w_{i}")
+                with c_text1:
+                    w_input = st.text_area(f"Warm-Up ({t_w}')", "Dynamic Activation\nLight Run\nJoint Drills", height=90, key=f"athx_w_{i}")
+
+                c_time2, c_text2 = st.columns([1, 3])
+                with c_time2:
+                    t_s = st.number_input("Strength Max (min)", 0, 60, 15, key=f"t_athx_s_{i}")
+                with c_text2:
+                    s_input = st.text_area(f"Strength Max ({t_s}')", "5 RM Deadlift or 3 RM Front Squat", height=90, key=f"athx_s_{i}")
+
+                c_time3, c_text3 = st.columns([1, 3])
+                with c_time3:
+                    t_e = st.number_input("Endurance (min)", 0, 60, 15, key=f"t_athx_e_{i}")
+                with c_text3:
+                    l_input = st.text_area(f"Endurance ({t_e}')", "Max Burpees Broad Jump / Max Run / Farmer Carry", height=90, key=f"athx_e_{i}")
+
+                c_time4, c_text4 = st.columns([1, 3])
+                with c_time4:
+                    t_m = st.number_input("MetCon X (min)", 1, 60, 15, key=f"t_athx_m_{i}")
+                with c_text4:
+                    m_input = st.text_area(f"MetCon X ({t_m}')", "For Time / AMRAP High Intensity under fatigue", height=110, key=f"athx_m_{i}")
+
+                c_time5, c_text5 = st.columns([1, 3])
+                with c_time5:
+                    t_r = st.number_input("Mobility (min)", 0, 60, 5, key=f"t_athx_r_{i}")
+                with c_text5:
+                    r_input = st.text_area(f"Mobility ({t_r}')", "Myofascial Release / Stretching", height=80, key=f"athx_r_{i}")
+
+                total_time = t_w + t_s + t_e + t_m + t_r
+
+            # --- CROSSFIT PADRÃO (TERÇA, QUARTA, QUINTA, SÁBADO, DOMINGO) ---
             else:
-                w_input = st.text_area("Warm-Up (10')", "2-3 Rounds:\n50 Jumping Jacks\n10 Shuttle Runs\nDynamic Drills", height=120, key=f"cf_w_{i}")
-                s_input = st.text_area("Strength (15')", "", height=100, key=f"cf_s_{i}")
-                l_input = st.text_area("Skill (10')", "", height=100, key=f"cf_l_{i}")
-                m_input = st.text_area("WOD (20')", "", height=130, key=f"cf_wod_{i}")
-                a_input = st.text_area("Accessory (5-10')", "Unilateral accessories / core stabilization", height=90, key=f"cf_a_{i}")
-                r_input = st.text_area("Mobility (5')", "Targeted joint mobility", height=80, key=f"cf_m_{i}")
+                c_time1, c_text1 = st.columns([1, 3])
+                with c_time1:
+                    t_w = st.number_input("Warm-Up (min)", 1, 60, 10, key=f"t_cf_w_{i}")
+                with c_text1:
+                    w_input = st.text_area(f"1. Warm-Up ({t_w}')", "2-3 Rounds:\n50 Jumping Jacks\n10 Shuttle Runs\nDynamic Drills", height=100, key=f"cf_w_{i}")
+
+                c_time2, c_text2 = st.columns([1, 3])
+                with c_time2:
+                    t_s = st.number_input("Strength (min)", 0, 60, 15, key=f"t_cf_s_{i}")
+                with c_text2:
+                    s_input = st.text_area(f"2. Strength ({t_s}')", "", height=90, key=f"cf_s_{i}")
+
+                c_time3, c_text3 = st.columns([1, 3])
+                with c_time3:
+                    t_l = st.number_input("Skill (min)", 0, 60, 10, key=f"t_cf_l_{i}")
+                with c_text3:
+                    l_input = st.text_area(f"3. Skill ({t_l}')", "", height=90, key=f"cf_l_{i}")
+
+                c_time4, c_text4 = st.columns([1, 3])
+                with c_time4:
+                    t_m = st.number_input("WOD (min)", 1, 60, 15, key=f"t_cf_m_{i}")
+                with c_text4:
+                    m_input = st.text_area(f"4. WOD ({t_m}')", "", height=110, key=f"cf_wod_{i}")
+
+                c_time5, c_text5 = st.columns([1, 3])
+                with c_time5:
+                    t_a = st.number_input("Accessory (min)", 0, 60, 5, key=f"t_cf_a_{i}")
+                with c_text5:
+                    a_input = st.text_area(f"5. Accessory ({t_a}')", "Unilateral accessories / core stabilization", height=80, key=f"cf_a_{i}")
+
+                c_time6, c_text6 = st.columns([1, 3])
+                with c_time6:
+                    t_r = st.number_input("Mobility (min)", 0, 60, 5, key=f"t_cf_r_{i}")
+                with c_text6:
+                    r_input = st.text_area(f"6. Mobility ({t_r}')", "Targeted joint mobility", height=80, key=f"cf_m_{i}")
+
+                total_time = t_w + t_s + t_l + t_m + t_a + t_r
+
+            # Totalizador do Tempo Cap da Sessão
+            if total_time > 60:
+                st.warning(f"⚠️ **Session Time Alert:** Total duration is **{total_time} min** (Standard limit: 60 min).")
+            else:
+                st.success(f"⏱️ **Session Total Duration:** **{total_time} min** / 60 min")
+
+            # --- DIFICULDADE / FADIGA DO DIA (DAILY FATIGUE SCORE) ---
+            st.markdown("---")
+            st.markdown("### ⚡ Daily Fatigue Score (RPE & Intensity)")
+            daily_pts = (t_s * 1.5) + (t_m * 2.0)
+            if "HYROX" in day_info["focus"] or "ATHX" in day_info["focus"]:
+                daily_pts += 15
+                
+            if daily_pts <= 25:
+                st.info(f"🟢 **Daily Level:** Level 1 - Low Fatigue (~{int(daily_pts)} pts)")
+            elif daily_pts <= 45:
+                st.success(f"🟡 **Daily Level:** Level 2 - Moderate Fatigue (~{int(daily_pts)} pts)")
+            elif daily_pts <= 65:
+                st.warning(f"🟠 **Daily Level:** Level 3 - High Fatigue (~{int(daily_pts)} pts)")
+            else:
+                st.error(f"🔴 **Daily Level:** Level 4 - Very High / Shock Session (~{int(daily_pts)} pts)")
 
         with col2:
             st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
