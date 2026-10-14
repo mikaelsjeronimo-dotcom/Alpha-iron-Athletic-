@@ -63,7 +63,6 @@ st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
 # --- TABELA DE VOLUME IDEAL DINÂMICO POR BLOCO E SEMANA ---
 def obter_metas_volume(bloco_sel, semana_sel):
-    # Valores base (Semana Normal de Acumulação)
     base = {
         "Squat": 140,
         "Hinge": 90,
@@ -86,14 +85,14 @@ def obter_metas_volume(bloco_sel, semana_sel):
         base["Hinge"] += 30
         base["Squat"] += 20
 
-    # Ajuste por Fase da Semana (Progression, Overload, Deload)
+    # Ajuste por Fase da Semana
     fator = 1.0
     if "Progression" in semana_sel or "Week 2" in semana_sel:
         fator = 1.15
     elif "Overload" in semana_sel or "Week 3" in semana_sel:
         fator = 1.30
     elif "Deload" in semana_sel or "Week 4" in semana_sel:
-        fator = 0.65  # Redução de volume no Deload
+        fator = 0.65  # Redução no Deload
         
     return {
         "Squat": int(base["Squat"] * fator),
@@ -103,25 +102,38 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": round(base["Run"] * fator, 1)
     }
 
-# --- CONTADOR DE REPETIÇÕES EXTRAÍDAS DO TEXTO DOS TREINOS ---
+# --- CONTADOR PRECISO DE REPETIÇÕES (EXTRAI EXERCÍCIOS REAIS) ---
 def extrair_volume_acumulado(todos_textos_semana):
     texto = " ".join(todos_textos_semana).lower()
     
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Run": 0.0}
     
-    # Extrai repetições por padrão de movimento
     linhas = texto.split("\n")
     for linha in linhas:
-        # Busca números e multiplicadores (ex: 5x10, 21-15-9, 50 reps)
+        if "rm " in linha or "rm" in linha:
+            continue
+            
         reps = 0
-        m_mult = re.search(r'(\d+)\s*x\s*(\d+)', linha)
+        
+        # 1. Padrão Séries x Repetições (ex: 4x8, 5x5, 3x12)
+        m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha)
         if m_mult:
-            reps = int(m_mult.group(1)) * int(m_mult.group(2))
+            for s, r in m_mult:
+                reps += int(s) * int(r)
         else:
-            nums = re.findall(r'\b\d+\b', linha)
-            if nums:
-                reps = sum([int(n) for n in nums if int(n) < 300])
+            # 2. Padrão Chipper / Esquema com hífens (ex: 21-15-9)
+            esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha)
+            if esquema_hifen:
+                for a, b, c in esquema_hifen:
+                    reps += int(a) + int(b) + int(c)
+            else:
+                # 3. Número antes do nome do exercício (ex: 12 Goblet Squats, 15 Pull-ups)
+                match_direct = re.findall(r'(\d+)\s+(squat|agacho|thruster|wall ball|lunge|deadlift|terra|pull-up|burpee|push-up|push press|snatch|clean|jerk|row)', linha)
+                if match_direct:
+                    for num, ex in match_direct:
+                        reps += int(num)
 
+        # Associa repetições ao padrão de movimento
         if any(k in linha for k in ["squat", "agacho", "thruster", "wall ball", "lunge"]):
             vol["Squat"] += reps
         elif any(k in linha for k in ["deadlift", "terra", "snatch", "clean", "swing", "hinge", "rdl"]):
@@ -307,13 +319,11 @@ semana = st.sidebar.selectbox("Periodization Week", [
     "Week 4 - Deload / Benchmark"
 ])
 
-# Obter Metas de Volume Automáticas para o Bloco e Semana selecionados
 metas = obter_metas_volume(bloco, semana)
 
 st.sidebar.markdown("---")
 st.sidebar.header("📊 MCVS & Weekly Volume Control")
 
-# --- GRADE SEMANAL E CAPTURA DE TEXTO PROGRAMADO ---
 dias_semana = [
     {"day": "Monday", "focus": "HYROX"},
     {"day": "Tuesday", "focus": "CrossFit - Strength / LPO"},
@@ -324,30 +334,27 @@ dias_semana = [
     {"day": "Sunday", "focus": "Benchmark / Hero"}
 ]
 
-# Inicializa sessão para capturar os treinos digitados
 if "treinos_semana" not in st.session_state:
     st.session_state["treinos_semana"] = {d["day"]: "" for d in dias_semana}
 
-# Calcula Volume Atual Programado
 vol_usado = extrair_volume_acumulado(list(st.session_state["treinos_semana"].values()))
 
-# Tabela Compacta de Controle de Volume Lateral
+# TABELA COM FORMATAÇÃO TEXTUAL LIMPA (INTEIROS SEM DECIMAIS .0)
 tabela_volume = pd.DataFrame({
     "Pattern": ["Squat", "Hinge", "Push", "Pull", "Run (KM)"],
-    "Target": [metas["Squat"], metas["Hinge"], metas["Push"], metas["Pull"], metas["Run"]],
-    "Used": [vol_usado["Squat"], vol_usado["Hinge"], vol_usado["Push"], vol_usado["Pull"], vol_usado["Run"]],
+    "Target": [f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", f"{int(metas['Pull'])}", f"{metas['Run']} km"],
+    "Used": [f"{int(vol_usado['Squat'])}", f"{int(vol_usado['Hinge'])}", f"{int(vol_usado['Push'])}", f"{int(vol_usado['Pull'])}", f"{vol_usado['Run']} km"],
     "Balance": [
-        metas["Squat"] - vol_usado["Squat"],
-        metas["Hinge"] - vol_usado["Hinge"],
-        metas["Push"] - vol_usado["Push"],
-        metas["Pull"] - vol_usado["Pull"],
-        round(metas["Run"] - vol_usado["Run"], 1)
+        f"{int(metas['Squat'] - vol_usado['Squat'])}",
+        f"{int(metas['Hinge'] - vol_usado['Hinge'])}",
+        f"{int(metas['Push'] - vol_usado['Push'])}",
+        f"{int(metas['Pull'] - vol_usado['Pull'])}",
+        f"{round(metas['Run'] - vol_usado['Run'], 1)} km"
     ]
 })
 
 st.sidebar.table(tabela_volume)
 
-# Cálculo IACS baseado no volume usado vs target
 iacs_score = (vol_usado["Squat"] * 0.15) + (vol_usado["Hinge"] * 0.2) + (vol_usado["Push"] * 0.15) + (vol_usado["Pull"] * 0.15) + (vol_usado["Run"] * 3)
 
 st.sidebar.metric("Alpha Load Index (IACS)", f"{int(iacs_score)} pts")
@@ -420,19 +427,19 @@ for i, tab in enumerate(tabs):
                 with c_time2:
                     t_s = st.number_input("Strength Max (min)", 0, 60, 15, key=f"t_athx_s_{i}")
                 with c_text2:
-                    s_input = st.text_area(f"Strength Max ({t_s}')", "5 RM Deadlift or 3 RM Front Squat", height=90, key=f"athx_s_{i}")
+                    s_input = st.text_area(f"Strength Max ({t_s}')", "", height=90, key=f"athx_s_{i}")
 
                 c_time3, c_text3 = st.columns([1, 3])
                 with c_time3:
                     t_e = st.number_input("Endurance (min)", 0, 60, 15, key=f"t_athx_e_{i}")
                 with c_text3:
-                    l_input = st.text_area(f"Endurance ({t_e}')", "Max Burpees Broad Jump / Max Run / Farmer Carry", height=90, key=f"athx_e_{i}")
+                    l_input = st.text_area(f"Endurance ({t_e}')", "", height=90, key=f"athx_e_{i}")
 
                 c_time4, c_text4 = st.columns([1, 3])
                 with c_time4:
                     t_m = st.number_input("MetCon X (min)", 1, 60, 15, key=f"t_athx_m_{i}")
                 with c_text4:
-                    m_input = st.text_area(f"MetCon X ({t_m}')", "For Time / AMRAP High Intensity under fatigue", height=110, key=f"athx_m_{i}")
+                    m_input = st.text_area(f"MetCon X ({t_m}')", "", height=110, key=f"athx_m_{i}")
 
                 c_time5, c_text5 = st.columns([1, 3])
                 with c_time5:
@@ -481,7 +488,6 @@ for i, tab in enumerate(tabs):
 
                 total_time = t_w + t_s + t_l + t_m + t_a + t_r
 
-            # Atualiza no estado global para somar o volume semanal
             st.session_state["treinos_semana"][day_name] = w_input + " " + s_input + " " + l_input + " " + m_input
 
             # Totalizador do Tempo Cap da Sessão
