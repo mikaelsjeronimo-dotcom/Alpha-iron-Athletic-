@@ -71,7 +71,6 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": 8.0
     }
     
-    # Ajuste por Foco do Bloco
     if "Block 1" in bloco_sel or "Strength" in bloco_sel:
         base["Squat"] += 30
         base["Hinge"] += 20
@@ -85,14 +84,13 @@ def obter_metas_volume(bloco_sel, semana_sel):
         base["Hinge"] += 30
         base["Squat"] += 20
 
-    # Ajuste por Fase da Semana
     fator = 1.0
     if "Progression" in semana_sel or "Week 2" in semana_sel:
         fator = 1.15
     elif "Overload" in semana_sel or "Week 3" in semana_sel:
         fator = 1.30
     elif "Deload" in semana_sel or "Week 4" in semana_sel:
-        fator = 0.65  # Redução no Deload
+        fator = 0.65
         
     return {
         "Squat": int(base["Squat"] * fator),
@@ -102,53 +100,59 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": round(base["Run"] * fator, 1)
     }
 
-# --- CONTADOR PRECISO DE REPETIÇÕES (EXTRAI EXERCÍCIOS REAIS) ---
+# --- ALGORITMO AVANÇADO DE CONTAGEM DE REPETIÇÕES E PADRÕES DE MOVIMENTO ---
 def extrair_volume_acumulado(todos_textos_semana):
     texto = " ".join(todos_textos_semana).lower()
-    
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Run": 0.0}
     
     linhas = texto.split("\n")
     for linha in linhas:
-        if "rm " in linha or "rm" in linha:
+        linha_limpa = linha.strip()
+        if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
             continue
             
         reps = 0
         
-        # 1. Padrão Séries x Repetições (ex: 4x8, 5x5, 3x12)
-        m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha)
+        # 1. Procura por multiplicadores (ex: 4x8, 5x10, 3x12)
+        m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_limpa)
         if m_mult:
             for s, r in m_mult:
                 reps += int(s) * int(r)
         else:
-            # 2. Padrão Chipper / Esquema com hífens (ex: 21-15-9)
-            esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha)
+            # 2. Procura por esquemas de repetições (ex: 21-15-9, 15-12-9)
+            esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_limpa)
             if esquema_hifen:
                 for a, b, c in esquema_hifen:
                     reps += int(a) + int(b) + int(c)
             else:
-                # 3. Número antes do nome do exercício (ex: 12 Goblet Squats, 15 Pull-ups)
-                match_direct = re.findall(r'(\d+)\s+(squat|agacho|thruster|wall ball|lunge|deadlift|terra|pull-up|burpee|push-up|push press|snatch|clean|jerk|row)', linha)
-                if match_direct:
-                    for num, ex in match_direct:
-                        reps += int(num)
+                # 3. Procura por números isolados antes do nome do exercício
+                # Ex: "10 strict pull up", "10 toes to bar", "15 goblet squats"
+                nums = re.findall(r'\b(\d+)\b', linha_limpa)
+                if nums:
+                    # Filtra números razoáveis de repetições (evita anos ou min)
+                    reps_encontradas = [int(n) for n in nums if int(n) <= 300]
+                    if reps_encontradas:
+                        reps = sum(reps_encontradas)
 
-        # Associa repetições ao padrão de movimento
-        if any(k in linha for k in ["squat", "agacho", "thruster", "wall ball", "lunge"]):
+        if reps == 0:
+            continue
+
+        # Classificação por palavra-chave (abrange singular, plural, com ou sem hífen/espaço)
+        if any(k in linha_limpa for k in ["squat", "agacho", "thruster", "wall ball", "wallball", "lunge", "passada", "pistol"]):
             vol["Squat"] += reps
-        elif any(k in linha for k in ["deadlift", "terra", "snatch", "clean", "swing", "hinge", "rdl"]):
+        elif any(k in linha_limpa for k in ["deadlift", "terra", "snatch", "clean", "swing", "hinge", "rdl", "good morning"]):
             vol["Hinge"] += reps
-        elif any(k in linha for k in ["push", "press", "jerk", "hspu", "dip", "bench"]):
+        elif any(k in linha_limpa for k in ["push", "press", "jerk", "hspu", "handstand push", "dip", "bench", "pushup", "push-up", "flexao", "flexão"]):
             vol["Push"] += reps
-        elif any(k in linha for k in ["pull", "puxada", "row", "remada", "chest to bar", "muscle-up"]):
+        elif any(k in linha_limpa for k in ["pull", "pullup", "pull-up", "puxada", "row", "remada", "chest to bar", "c2b", "muscle up", "muscle-up", "toes to bar", "ttb", "knees to elbow"]):
             vol["Pull"] += reps
-        elif any(k in linha for k in ["run", "corrida", "km", "m run"]):
-            if "km" in linha:
-                kms = re.findall(r'(\d+(?:\.\d+)?)\s*km', linha)
+        elif any(k in linha_limpa for k in ["run", "corrida", "km", "m run"]):
+            if "km" in linha_limpa:
+                kms = re.findall(r'(\d+(?:\.\d+)?)\s*km', linha_limpa)
                 if kms:
                     vol["Run"] += float(kms[0])
-            elif "m run" in linha:
-                metros = re.findall(r'(\d+)\s*m run', linha)
+            elif "m run" in linha_limpa or "m corrida" in linha_limpa:
+                metros = re.findall(r'(\d+)\s*m', linha_limpa)
                 if metros:
                     vol["Run"] += sum([int(m) for m in metros]) / 1000.0
 
@@ -337,9 +341,10 @@ dias_semana = [
 if "treinos_semana" not in st.session_state:
     st.session_state["treinos_semana"] = {d["day"]: "" for d in dias_semana}
 
+# Processa o volume atual de toda a semana
 vol_usado = extrair_volume_acumulado(list(st.session_state["treinos_semana"].values()))
 
-# TABELA COM FORMATAÇÃO TEXTUAL LIMPA (INTEIROS SEM DECIMAIS .0)
+# TABELA LATERAL COM VALORES EXATOS E SALDO EM TEMPO REAL
 tabela_volume = pd.DataFrame({
     "Pattern": ["Squat", "Hinge", "Push", "Pull", "Run (KM)"],
     "Target": [f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", f"{int(metas['Pull'])}", f"{metas['Run']} km"],
@@ -488,7 +493,8 @@ for i, tab in enumerate(tabs):
 
                 total_time = t_w + t_s + t_l + t_m + t_a + t_r
 
-            st.session_state["treinos_semana"][day_name] = w_input + " " + s_input + " " + l_input + " " + m_input
+            # Salva o treino digitado no estado da sessão
+            st.session_state["treinos_semana"][day_name] = w_input + "\n" + s_input + "\n" + l_input + "\n" + m_input
 
             # Totalizador do Tempo Cap da Sessão
             if total_time > 60:
