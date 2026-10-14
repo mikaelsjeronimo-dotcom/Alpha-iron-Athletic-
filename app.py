@@ -5,8 +5,31 @@ import glob
 import base64
 import re
 
-# 1. Configuração Visual da Página
-st.set_page_config(page_title="Alpha Iron 2.0 - Workout Builder", layout="wide", page_icon="🏋️‍♂️")
+# --- BUSCA A LOGO OFICIAL PARA O FAVICON DA ABA DO NAVEGADOR ---
+def encontrar_logo():
+    nomes_possiveis = [
+        "Logo_e_mascote[1].png", 
+        "Logo_e_mascote.png", 
+        "logo.png", 
+        "Logo.png"
+    ]
+    for nome in nomes_possiveis:
+        if os.path.exists(nome):
+            return nome
+    arquivos = glob.glob("*.png") + glob.glob("*.jpg") + glob.glob("*.jpeg")
+    for f in arquivos:
+        if "logo" in f.lower() or "mascote" in f.lower():
+            return f
+    return None
+
+logo_path = encontrar_logo()
+
+# 1. Configuração Visual da Página (Favicon com a Logo Oficial da Alpha)
+st.set_page_config(
+    page_title="Alpha Iron 2.0 - Workout Builder", 
+    layout="wide", 
+    page_icon=logo_path if logo_path else "🏋️‍♂️"
+)
 
 st.markdown("""
     <style>
@@ -17,31 +40,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DIRETO DA LOGO ---
-def carregar_logo():
-    nomes_possiveis = [
-        "Logo_e_mascote[1].png", 
-        "Logo_e_mascote.png", 
-        "logo.png", 
-        "Logo.png"
-    ]
-    
-    logo_file = None
-    for nome in nomes_possiveis:
-        if os.path.exists(nome):
-            logo_file = nome
-            break
-            
-    if not logo_file:
-        arquivos = glob.glob("*.png") + glob.glob("*.jpg") + glob.glob("*.jpeg")
-        for f in arquivos:
-            if "logo" in f.lower() or "mascote" in f.lower():
-                logo_file = f
-                break
-
-    if logo_file and os.path.exists(logo_file):
+# --- CARREGAMENTO DIRETO DA LOGO NA SIDEBAR ---
+def carregar_logo_sidebar():
+    if logo_path and os.path.exists(logo_path):
         try:
-            with open(logo_file, "rb") as image_file:
+            with open(logo_path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode()
             
             st.sidebar.markdown(
@@ -57,7 +60,7 @@ def carregar_logo():
     else:
         st.sidebar.title("🏋️‍♂️ ALPHA IRON ATHLETICS")
 
-carregar_logo()
+carregar_logo_sidebar()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
@@ -108,7 +111,7 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": round(base["Run"] * fator, 1)
     }
 
-# --- MOTOR DE CÁLCULO DE VOLUME USANDO O TEMPO DO INPUT ---
+# --- MOTOR CORRIGIDO DE CÁLCULO DE EMOM VINCULADO AO TEMPO EXATO DO BLOCO ---
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
     
@@ -121,7 +124,6 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
             
         linhas = [l.strip() for l in texto.split("\n") if l.strip()]
         
-        # Checa presença de marcas estruturais
         texto_low = texto.lower()
         is_emom = "emom" in texto_low
         is_amrap = "amrap" in texto_low
@@ -133,7 +135,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                 num_rounds = int(m_rnds.group(1))
                 break
 
-        # Filtra apenas linhas de exercícios
+        # Filtra exercícios do bloco
         linhas_ex = []
         for l in linhas:
             l_low = l.lower()
@@ -145,17 +147,15 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
 
         qtd_exercicios = len(linhas_ex) if len(linhas_ex) > 0 else 1
 
-        # APLICA O TEMPO DO INPUT AO CÁLCULO DO EMOM
+        # CÁLCULO DE MULTIPLICADOR VINCULADO AO TEMPO DO INPUT
         multiplicador = 1
         if is_emom and tempo_minutos > 0:
-            passagens = tempo_minutos // qtd_exercicios
-            multiplicador = max(1, passagens)
+            multiplicador = max(1, tempo_minutos // qtd_exercicios)
         elif is_amrap and tempo_minutos > 0:
             multiplicador = max(1, tempo_minutos // 3)
         elif num_rounds > 1:
             multiplicador = num_rounds
 
-        # Processa cada exercício da lista
         for linha in linhas_ex:
             linha_limpa = linha.lower().strip()
             if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
@@ -211,7 +211,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                 vol["Push"] += reps_totais
 
             if any(k in linha_limpa for k in [
-                "pull", "pullup", "c2b", "chest to bar", "muscle up", "muscle-up", "bmu", "rmu", "row", "remada", "rope climb", "puxada"
+                "pull", "pullup", "pull-up", "c2b", "chest to bar", "muscle up", "muscle-up", "bmu", "rmu", "row", "remada", "rope climb", "puxada"
             ]):
                 vol["Pull"] += reps_totais
 
@@ -412,9 +412,6 @@ dias_semana = [
     {"day": "Sunday", "focus": "Benchmark / Hero"}
 ]
 
-if "dados_diarios" not in st.session_state:
-    st.session_state["dados_diarios"] = []
-
 # --- CONSTRUÇÃO DAS ABAS DIÁRIAS ---
 tabs = st.tabs([d["day"] for d in dias_semana])
 
@@ -597,10 +594,10 @@ for i, tab in enumerate(tabs):
             st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
             st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
 
-# PROCESSA O VOLUME USADO CONECTANDO CADA TEXTO AO SEU TEMPO DO INPUT
+# PROCESSA O VOLUME EXATAMENTE CONECTADO COM O TEMPO DIGITADO EM CADA BLOCO
 vol_usado = extrair_volume_acumulado_estruturado(lista_blocos_acumulados)
 
-# TABELA LATERAL COM O VOLUME CALCULADO SINCRONIZADO
+# TABELA LATERAL COM O VOLUME RECALCULADO CORRETAMENTE
 tabela_volume = pd.DataFrame({
     "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
     "Target": [
