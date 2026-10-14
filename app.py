@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import os
+import glob
+import base64
 
 # 1. Configuração Visual da Página
 st.set_page_config(page_title="Alpha Iron 2.0 - Workout Builder", layout="wide", page_icon="🏋️‍♂️")
@@ -13,14 +15,50 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DA LOGO ALPHA IRON ---
-logo_path = "logo.png"
-if os.path.exists(logo_path):
-    st.sidebar.image(logo_path, use_container_width=True)
-elif os.path.exists("1000319375.png"):
-    st.sidebar.image("1000319375.png", use_container_width=True)
-else:
-    st.sidebar.title("🏋️‍♂️ ALPHA IRON ATHLETICS")
+# --- CARREGAMENTO DIRETO DA LOGO DA SUA PASTA ---
+def carregar_logo():
+    # Lista de possíveis nomes da logo na pasta raiz
+    nomes_possiveis = [
+        "Logo_e_mascote[1].png", 
+        "Logo_e_mascote.png", 
+        "logo.png", 
+        "Logo.png"
+    ]
+    
+    logo_file = None
+    for nome in nomes_possiveis:
+        if os.path.exists(nome):
+            logo_file = nome
+            break
+            
+    # Se não achar pelos nomes exatos, busca qualquer imagem com 'logo' ou 'mascote'
+    if not logo_file:
+        arquivos = glob.glob("*.png") + glob.glob("*.jpg") + glob.glob("*.jpeg")
+        for f in arquivos:
+            if "logo" in f.lower() or "mascote" in f.lower():
+                logo_file = f
+                break
+
+    if logo_file and os.path.exists(logo_file):
+        try:
+            with open(logo_file, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode()
+            
+            st.sidebar.markdown(
+                f"""
+                <div style="text-align: center; padding-bottom: 15px;">
+                    <img src="data:image/png;base64,{encoded_string}" style="max-width: 100%; height: auto; border-radius: 8px;">
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        except Exception:
+            st.sidebar.title("🏋️‍♂️ ALPHA IRON ATHLETICS")
+    else:
+        st.sidebar.title("🏋️‍♂️ ALPHA IRON ATHLETICS")
+
+# Executa o carregamento da logo na barra lateral
+carregar_logo()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
@@ -118,8 +156,8 @@ METODOLOGIA_BASE = {
 
 # --- GERADOR DE SUGESTÕES AUTOMÁTICAS ---
 def gerar_todas_sugestoes(bloco_sel, semana_sel, strength_txt, skill_txt, wod_txt):
-    key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1] # Ex: "Block 1"
-    key_week = semana_sel.split(" ")[0] + " " + semana_sel.split(" ")[1] # Ex: "Week 1"
+    key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1]
+    key_week = semana_sel.split(" ")[0] + " " + semana_sel.split(" ")[1]
     
     base_bloco = METODOLOGIA_BASE.get(key_block, {}).get(key_week, {
         "strength": "Strength progression based on block focus",
@@ -133,160 +171,4 @@ def gerar_todas_sugestoes(bloco_sel, semana_sel, strength_txt, skill_txt, wod_tx
     
     conteudo = (s_usada + " " + l_usada + " " + m_usada).lower()
     
-    warmup_sug = "2-3 Rounds:\n- 10 Air Squats\n- 10 Jumping Jacks\n- Dynamic Drills"
-    mob_sug = "General Joint Mobility & Foam Rolling"
-    acess_sug = "3 Sets: 15 Hollow Rocks + 12 Shoulder Tap Planks"
-    
-    if any(k in conteudo for k in ["squat", "agach", "thruster", "wall ball", "lunge"]):
-        warmup_sug = "3 Rounds:\n- 10 Paused Air Squats\n- 10 Cossack Squats\n- 15m Shuttle Run"
-        mob_sug = "Ankle Dorsiflexion + Hip Opener (Pigeon Pose)"
-        acess_sug = "3 Sets: 12 Bulgarian Split Squats + 15 Mini-band Walks"
-        
-    elif any(k in conteudo for k in ["deadlift", "terra", "snatch", "clean", "swing", "hinge"]):
-        warmup_sug = "3 Rounds:\n- 10 PVC Good Mornings\n- 10 Glute Bridges\n- 8 Inchworms"
-        mob_sug = "Hamstring Release + Thoracic Spine Mobility"
-        acess_sug = "3 Sets: 10 Single Leg RDLs + 15 Banded Good Mornings"
-        
-    elif any(k in conteudo for k in ["jerk", "press", "hspu", "overhead", "push press"]):
-        warmup_sug = "3 Rounds:\n- 10 PVC Pass-throughs\n- 10 Scapular Push-ups\n- 8 Light DB Press"
-        mob_sug = "Shoulder External Rotation + Lat Stretch"
-        acess_sug = "3 Sets: 12 Banded Face Pulls + 10 Bottom-up KB Press"
-
-    df_sug = pd.DataFrame({
-        "Session Block": [
-            "1. Warm-Up", 
-            "2. Strength", 
-            "3. Skill", 
-            "4. WOD", 
-            "5. Accessory", 
-            "6. Mobility"
-        ],
-        "Recommended Programming": [
-            warmup_sug, 
-            base_bloco["strength"], 
-            base_bloco["skill"], 
-            base_bloco["wod"], 
-            acess_sug, 
-            mob_sug
-        ]
-    })
-    
-    return df_sug
-
-# --- BARRA LATERAL: PERIODIZAÇÃO ---
-st.sidebar.header("⚙️ Periodization (Planilha 2.0)")
-bloco = st.sidebar.selectbox("Periodization Phase", [
-    "Block 1 - Strength Focus",
-    "Block 2 - Engine Focus",
-    "Block 3 - Gymnastics Focus",
-    "Block 4 - Weightlifting Focus"
-])
-
-semana = st.sidebar.selectbox("Periodization Week", [
-    "Week 1 - Accumulation",
-    "Week 2 - Progression",
-    "Week 3 - Overload",
-    "Week 4 - Deload / Benchmark"
-])
-
-st.sidebar.markdown("---")
-st.sidebar.header("📊 MCVS & IACS Control")
-
-vol_squat = st.sidebar.number_input("Squat Volume (Ideal: 120-180)", value=140)
-vol_hinge = st.sidebar.number_input("Hinge / LPO Volume (Ideal: 80-120)", value=90)
-vol_push = st.sidebar.number_input("Push Volume (Ideal: 60-100)", value=70)
-vol_pull = st.sidebar.number_input("Pull Volume (Ideal: 60-100)", value=75)
-vol_run = st.sidebar.number_input("Running Volume KM (Ideal: 6-12 km)", value=8.0)
-
-# Cálculo IACS conforme Metodologia Alpha Iron
-iacs_score = (vol_squat * 0.15) + (vol_hinge * 0.2) + (vol_push * 0.15) + (vol_pull * 0.15) + (vol_run * 3)
-
-st.sidebar.metric("Alpha Load Index (IACS)", f"{int(iacs_score)} pts")
-
-if iacs_score <= 45:
-    st.sidebar.success("Classification: Light Week")
-elif iacs_score <= 60:
-    st.sidebar.info("Classification: Moderate Week")
-elif iacs_score <= 75:
-    st.sidebar.warning("Classification: Heavy Week")
-elif iacs_score <= 90:
-    st.sidebar.error("Classification: Shock Week")
-else:
-    st.sidebar.error("⚠️ Not Recommended for Regular Classes")
-
-# --- GRADE SEMANAL CONFORME A ABA SETTINGS ---
-dias_semana = [
-    {"day": "Monday", "focus": "HYROX"},
-    {"day": "Tuesday", "focus": "CrossFit - Strength / LPO"},
-    {"day": "Wednesday", "focus": "CrossFit - Gymnastics"},
-    {"day": "Thursday", "focus": "CrossFit - Engine"},
-    {"day": "Friday", "focus": "ATHX"},
-    {"day": "Saturday", "focus": "Community WOD"},
-    {"day": "Sunday", "focus": "Benchmark / Hero"}
-]
-
-tabs = st.tabs([d["day"] for d in dias_semana])
-
-for i, tab in enumerate(tabs):
-    day_info = dias_semana[i]
-    with tab:
-        st.subheader(f"{day_info['day']} — {day_info['focus']}")
-        
-        col1, col2 = st.columns([1.2, 1])
-        
-        with col1:
-            st.markdown("### 📋 Session Structure (60 min)")
-            
-            # --- SEGUNDA: HYROX ---
-            if day_info["day"] == "Monday":
-                st.info("🏃 **HYROX Session:** Running + Functional Stations")
-                w_input = st.text_area("Warm-Up (10')", "Dynamic Mobility\nCore & Hip Activation\nLight Run", height=100, key=f"hy_w_{i}")
-                s_input = "" 
-                l_input = ""
-                m_input = st.text_area("HYROX Main Block (35-40')", "Alternating: Running + Functional Station (Burpee Broad Jump / Carries / Sled / Wall Ball)", height=150, key=f"hy_m_{i}")
-                r_input = st.text_area("Mobility (5')", "Light Walk & Guided Breathing / Joint Mobility", height=80, key=f"hy_r_{i}")
-            
-            # --- SEXTA: ATHX ---
-            elif day_info["day"] == "Friday":
-                st.info("🔥 **ATHX Session:** Fixed Structure (Strength Max + Endurance + MetCon X)")
-                w_input = st.text_area("Warm-Up (10')", "Dynamic Activation\nLight Run\nJoint Drills", height=100, key=f"athx_w_{i}")
-                s_input = st.text_area("Strength Max (15')", "5 RM Deadlift or 3 RM Front Squat", height=100, key=f"athx_s_{i}")
-                l_input = st.text_area("Endurance (15')", "Max Burpees Broad Jump / Max Run / Farmer Carry", height=100, key=f"athx_e_{i}")
-                m_input = st.text_area("MetCon X (20')", "For Time / AMRAP High Intensity under fatigue", height=120, key=f"athx_m_{i}")
-                r_input = st.text_area("Mobility (10')", "Myofascial Release / Stretching", height=80, key=f"athx_r_{i}")
-                
-            # --- CROSSFIT PADRÃO (TERÇA, QUARTA, QUINTA, SÁBADO, DOMINGO) ---
-            else:
-                w_input = st.text_area("Warm-Up (10')", "2-3 Rounds:\n50 Jumping Jacks\n10 Shuttle Runs\nDynamic Drills", height=120, key=f"cf_w_{i}")
-                s_input = st.text_area("Strength (15')", "", height=100, key=f"cf_s_{i}")
-                l_input = st.text_area("Skill (10')", "", height=100, key=f"cf_l_{i}")
-                m_input = st.text_area("WOD (20')", "", height=130, key=f"cf_wod_{i}")
-                a_input = st.text_area("Accessory (5-10')", "Unilateral accessories / core stabilization", height=90, key=f"cf_a_{i}")
-                r_input = st.text_area("Mobility (5')", "Targeted joint mobility", height=80, key=f"cf_m_{i}")
-
-        with col2:
-            st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
-            escala_df = pd.DataFrame({
-                "Level": ["RX", "Intermediate", "Beginner", "Masters"],
-                "Load / Category": ["100% RX Load", "70-80% Load", "50% Load / Dumbbells", "Custom Scaling"],
-                "Gymnastics": ["Full Movement", "Medium Progression", "Basic Scale", "Range Focus"]
-            })
-            st.table(escala_df)
-            
-            # --- TABELA DE SUGESTÕES COMPLETA ---
-            st.markdown("### 💡 Intelligence Suggestions")
-            st.caption("Auto-generated based on Block, Week & Typed Movement Patterns:")
-            
-            df_todas_sugestoes = gerar_todas_sugestoes(bloco, semana, s_input, l_input, m_input)
-            st.table(df_todas_sugestoes)
-            
-            st.markdown("---")
-            st.markdown("### 🔍 Validation Checklist")
-            st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
-            st.checkbox("Dominant movement pattern respected?", value=True, key=f"chk2_{i}")
-            st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
-            st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
-
-st.markdown("---")
-if st.button("💾 Save & Export Weekly Programming"):
-    st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
+    warmup_sug = "2-3 Rounds:\n- 10 Air Squats\n-
