@@ -7,7 +7,7 @@ import re
 import json
 from PIL import Image
 
-# --- ARQUIVO DE PERSISTÊNCIA EM TEMPO REAL (NUVEM / BANCO LOCAL) ---
+# --- ARQUIVO DE PERSISTÊNCIA EM TEMPO REAL ---
 DB_FILE = "treinos_salvos.json"
 
 def carregar_treinos_salvos():
@@ -26,12 +26,15 @@ def salvar_treinos_disco(dados):
     except Exception:
         pass
 
-# --- CARREGAMENTO DIRETO DO FAVICON DA ABA COM PIL (IMAGEM REAL) ---
-def carregar_favicon_aba():
-    # Procura exatamente o ficheiro favicon.png enviado
+# --- PROCESSAMENTO E OTIMIZAÇÃO EXATA DO FAVICON PARA O NAVEGADOR ---
+def carregar_favicon_otimizado():
     if os.path.exists("favicon.png"):
         try:
-            return Image.open("favicon.png")
+            img = Image.open("favicon.png")
+            # Redimensiona para formato padrão de favicon (32x32) mantendo transparência/qualidade
+            img_rgba = img.convert("RGBA")
+            img_favicon = img_rgba.resize((32, 32), Image.Resampling.LANCZOS)
+            return img_favicon
         except Exception:
             pass
     return "🏋️‍♂️"
@@ -54,9 +57,9 @@ def encontrar_logo_sidebar():
     return None
 
 sidebar_logo_path = encontrar_logo_sidebar()
-favicon_img = carregar_favicon_aba()
+favicon_img = carregar_favicon_otimizado()
 
-# 1. Configuração Visual da Página (Favicon real em objeto PIL)
+# 1. Configuração Visual da Página (Favicon real convertido em 32x32)
 st.set_page_config(
     page_title="Alpha Iron 2.0 - Workout Builder", 
     layout="wide", 
