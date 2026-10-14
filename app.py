@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import glob
 import base64
+import re
 
 # 1. Configuração Visual da Página
 st.set_page_config(page_title="Alpha Iron 2.0 - Workout Builder", layout="wide", page_icon="🏋️‍♂️")
@@ -15,7 +16,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DIRETO DA LOGO ---
+# --- CARREGAMENTO DIRETO DA LOGO DA SUA PASTA ---
 def carregar_logo():
     nomes_possiveis = [
         "Logo_e_mascote[1].png", 
@@ -59,7 +60,7 @@ carregar_logo()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
-# --- BANCO DE DADOS OFICIAL (BLOCKS & WEEKS) ---
+# --- BANCO DE DADOS OFICIAL DA PLANILHA (BLOCKS & WEEKS) ---
 METODOLOGIA_BASE = {
     "Block 1": {
         "Week 1": {
@@ -150,6 +151,60 @@ METODOLOGIA_BASE = {
         }
     }
 }
+
+# --- ALGORITMO DE ANÁLISE DE VOLUME E INTENSIDADE DO TREINO DIGITADO ---
+def analisar_treino_diario(texto_treino, t_strength, t_wod):
+    texto = texto_treino.lower()
+    
+    # 1. Análise de Volume (Repetições / Séries encontradas no texto)
+    vol_score = 10  # Pontuação base
+    
+    # Busca por padrões de repetições/séries (ex: 5x5, 4x8, 21-15-9, 50 reps)
+    sets_reps = re.findall(r'(\d+)\s*x\s*(\d+)', texto)
+    for s, r in sets_reps:
+        vol_score += int(s) * int(r) * 0.4
+        
+    numeros = re.findall(r'\b\d+\b', texto)
+    if numeros:
+        soma_nums = sum([int(n) for n in numeros if int(n) < 500])
+        vol_score += soma_nums * 0.1
+        
+    # Ponderação por tempo de WOD
+    vol_score += t_wod * 0.8
+
+    # 2. Análise de Intensidade (Cargas, Porcentagens %RM, RPE e Exercícios Pesados)
+    int_score = 10  # Pontuação base
+    
+    # Busca por %RM ou RPE no texto
+    porcentagens = re.findall(r'(\d+)%', texto)
+    if porcentagens:
+        pct_max = max([int(p) for p in porcentagens])
+        if pct_max >= 85:
+            int_score += 35
+        elif pct_max >= 75:
+            int_score += 25
+        elif pct_max >= 65:
+            int_score += 15
+            
+    rpes = re.findall(r'rpe\s*(\d+)', texto)
+    if rpes:
+        rpe_max = max([int(r) for r in rpes])
+        if rpe_max >= 9:
+            int_score += 30
+        elif rpe_max >= 8:
+            int_score += 20
+
+    # Adiciona intensidade se houver exercícios neuromusculares de carga/potência
+    if any(k in texto for k in ["deadlift", "terra", "heavy", "1rm", "3rm", "5rm"]):
+        int_score += 20
+    if any(k in texto for k in ["squat", "snatch", "clean", "jerk", "press"]):
+        int_score += 15
+    if any(k in texto for k in ["hyrox", "athx", "sprint"]):
+        int_score += 15
+
+    int_score += t_strength * 1.2
+    
+    return round(vol_score, 1), round(int_score, 1)
 
 # --- GERADOR DE SUGESTÕES AUTOMÁTICAS ---
 def gerar_todas_sugestoes(bloco_sel, semana_sel, strength_txt, skill_txt, wod_txt):
@@ -272,7 +327,6 @@ for i, tab in enumerate(tabs):
         with col1:
             st.markdown("### 📋 Session Structure (60 min)")
             
-            # Inicialização de variáveis
             t_s = 0
             t_m = 0
             
@@ -339,7 +393,7 @@ for i, tab in enumerate(tabs):
 
                 total_time = t_w + t_s + t_e + t_m + t_r
 
-            # --- CROSSFIT PADRÃO (TERÇA, QUARTA, QUINTA, SÁBADO, DOMINGO) ---
+            # --- CROSSFIT PADRÃO ---
             else:
                 c_time1, c_text1 = st.columns([1, 3])
                 with c_time1:
@@ -385,20 +439,29 @@ for i, tab in enumerate(tabs):
             else:
                 st.success(f"⏱️ **Session Total Duration:** **{total_time} min** / 60 min")
 
-            # --- DIFICULDADE DA SESSÃO ---
+            # --- DIFICULDADE E ANÁLISE DINÂMICA DA SESSÃO ---
             st.markdown("---")
-            daily_pts = (t_s * 1.5) + (t_m * 2.0)
-            if "HYROX" in day_info["focus"] or "ATHX" in day_info["focus"]:
-                daily_pts += 15
-                
-            if daily_pts <= 25:
-                st.info(f"🟢 **Daily Session Level:** Level 1 - Low Fatigue (~{int(daily_pts)} pts)")
-            elif daily_pts <= 45:
-                st.success(f"🟡 **Daily Session Level:** Level 2 - Moderate Fatigue (~{int(daily_pts)} pts)")
-            elif daily_pts <= 65:
-                st.warning(f"🟠 **Daily Session Level:** Level 3 - High Fatigue (~{int(daily_pts)} pts)")
+            st.markdown("### ⚡ Daily Session Load & Fatigue Analysis")
+            
+            texto_sessao = w_input + " " + s_input + " " + l_input + " " + m_input
+            v_score, i_score = analisar_treino_diario(texto_sessao, t_s, t_m)
+            
+            # Exibe métricas de Volume e Intensidade
+            col_m1, col_m2 = st.columns(2)
+            col_m1.metric("📦 Volume Score (Reps / Sets)", f"{v_score} pts")
+            col_m2.metric("🔥 Intensity Score (%RM / RPE / Load)", f"{i_score} pts")
+            
+            # Cálculo final do nível de fadiga do dia (Volume x Intensidade)
+            soma_diaria = v_score + i_score
+            
+            if soma_diaria <= 35:
+                st.info(f"🟢 **Daily Session Level:** Level 1 - Low Fatigue (~{int(soma_diaria)} pts) | *Ideal Target: Active Recovery / Skill*")
+            elif soma_diaria <= 65:
+                st.success(f"🟡 **Daily Session Level:** Level 2 - Moderate Fatigue (~{int(soma_diaria)} pts) | *Ideal Target: Volume / Progression*")
+            elif soma_diaria <= 95:
+                st.warning(f"🟠 **Daily Session Level:** Level 3 - High Fatigue (~{int(soma_diaria)} pts) | *Ideal Target: Heavy Strength / MetCon*")
             else:
-                st.error(f"🔴 **Daily Session Level:** Level 4 - Very High / Shock Session (~{int(daily_pts)} pts)")
+                st.error(f"🔴 **Daily Session Level:** Level 4 - Very High / Shock Session (~{int(soma_diaria)} pts) | *Requires Extended Recovery*")
 
         with col2:
             st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
