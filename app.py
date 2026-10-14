@@ -5,6 +5,7 @@ import glob
 import base64
 import re
 import json
+from PIL import Image
 
 # --- ARQUIVO DE PERSISTÊNCIA EM TEMPO REAL (NUVEM / BANCO LOCAL) ---
 DB_FILE = "treinos_salvos.json"
@@ -22,15 +23,20 @@ def salvar_treinos_disco(dados):
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2)
-    except Exception as e:
+    except Exception:
         pass
 
-# --- IDENTIFICAÇÃO DAS DUAS IMAGENS (SISTEMA DE LOGO DUPLA) ---
-# Image 1: Favicon (Aba do Navegador) -> "favicon.png"
-# Image 2: Sidebar (Barra Lateral) -> "logo.png" ou "Logo_e_mascote.png"
+# --- CARREGAMENTO DIRETO DO FAVICON DA ABA COM PIL (IMAGEM REAL) ---
+def carregar_favicon_aba():
+    # Procura exatamente o ficheiro favicon.png enviado
+    if os.path.exists("favicon.png"):
+        try:
+            return Image.open("favicon.png")
+        except Exception:
+            pass
+    return "🏋️‍♂️"
 
-favicon_path = "favicon.png" if os.path.exists("favicon.png") else None
-
+# --- ENCONTRAR A LOGO DA SIDEBAR (IMAGEM DA BARRA LATERAL) ---
 def encontrar_logo_sidebar():
     nomes_possiveis = [
         "Logo_e_mascote[1].png", 
@@ -48,12 +54,13 @@ def encontrar_logo_sidebar():
     return None
 
 sidebar_logo_path = encontrar_logo_sidebar()
+favicon_img = carregar_favicon_aba()
 
-# 1. Configuração Visual da Página (Favicon Personalizado na Aba do Navegador)
+# 1. Configuração Visual da Página (Favicon real em objeto PIL)
 st.set_page_config(
     page_title="Alpha Iron 2.0 - Workout Builder", 
     layout="wide", 
-    page_icon=favicon_path if favicon_path else (sidebar_logo_path if sidebar_logo_path else "🏋️‍♂️")
+    page_icon=favicon_img
 )
 
 st.markdown("""
@@ -185,7 +192,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
             if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
                 continue
 
-            # Limpa prefixos
+            # Limpa prefixos de linha
             linha_sem_prefixo = re.sub(r'^(?:min(?:uto)?\s*\d+|st\d+|station\s*\d+|\d+[\.\-\)]\s*)', '', linha_limpa).strip()
 
             # CORRIDA
@@ -221,7 +228,6 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
             is_bmu = any(k in linha_sem_prefixo for k in ["bmu", "bar muscle up", "bar muscle-up", "muscle up", "rmu"])
             
             if is_bmu:
-                # BMU entra com a contagem exata sem multiplicar rounds desnecessariamente se for baixa repetição
                 reps_totais = reps_base
             else:
                 reps_totais = reps_base * multiplicador
@@ -655,7 +661,7 @@ for i, tab in enumerate(tabs):
             st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
             st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
 
-# SALVA EM SEGUNDO PLANO AUTOMATICAMENTE PARA OUTROS COMPUTADORES / CELULAR
+# SALVA EM SEGUNDO PLANO AUTOMATICAMENTE
 salvar_treinos_disco(dados_para_salvar)
 
 # RECALCULA O VOLUME DA SEMANA INTEGRANDO A REGRA DE PULL E BMU
