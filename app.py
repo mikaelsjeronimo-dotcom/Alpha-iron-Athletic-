@@ -108,7 +108,7 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": round(base["Run"] * fator, 1)
     }
 
-# --- MOTOR AVANÇADO DE ANÁLISE DE ESTRUTURAS (EMOM / AMRAP / ROUNDS / CHIPPER) ---
+# --- MOTOR AVANÇADO DE ANÁLISE DE ESTRUTURAS DE EMOM DINÂMICO ---
 def extrair_volume_acumulado(todos_textos_semana):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
     
@@ -118,7 +118,7 @@ def extrair_volume_acumulado(todos_textos_semana):
             
         linhas = [l.strip() for l in bloco_texto.split("\n") if l.strip()]
         
-        # 1. Identifica Formato Estrutural
+        # 1. Identifica Formato Estrutural (EMOM / AMRAP / Rounds)
         minutos_emom = 0
         minutos_amrap = 0
         num_rounds = 1
@@ -143,29 +143,30 @@ def extrair_volume_acumulado(todos_textos_semana):
                 num_rounds = int(m_rnds.group(1))
                 break
 
-        # Filtra linhas de exercícios válidas
+        # Filtra apenas linhas de exercícios válidas
         linhas_ex = []
         for l in linhas:
             l_low = l.lower()
             if any(k in l_low for k in ["rx:", "scaled:", "emom", "amrap", "for time", "cap "]):
                 continue
-            # Trata opções alternadas (Ex: 5 Bar Muscle Up OR 10 Pull ups -> Pega o RX principal)
+            # Trata opções alternadas (Ex: 5 Bar Muscle Up OR 10 Pull ups -> Pega a opção principal)
             if " or " in l_low:
                 l = l_low.split(" or ")[0]
             linhas_ex.append(l)
 
         qtd_exercicios = len(linhas_ex) if len(linhas_ex) > 0 else 1
 
-        # Calcula multiplicador por rodada/round
+        # CÁLCULO PRECISO DAS PASSAGENS DO EMOM (Minutos Totais / Estações Digitadas)
         multiplicador_global = 1
         if minutos_emom > 0:
-            multiplicador_global = max(1, (minutos_emom // intervalo_emom) // qtd_exercicios)
+            passagens = (minutos_emom // intervalo_emom) // qtd_exercicios
+            multiplicador_global = max(1, passagens)
         elif num_rounds > 1:
             multiplicador_global = num_rounds
         elif minutos_amrap > 0:
             multiplicador_global = max(1, minutos_amrap // 3)
 
-        # Processa cada linha de exercício com seu multiplicador do formato
+        # Processa cada linha de exercício
         for linha in linhas_ex:
             linha_limpa = linha.lower().strip()
             if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
@@ -200,10 +201,9 @@ def extrair_volume_acumulado(todos_textos_semana):
             if reps_base == 0:
                 continue
 
-            # Aplica o multiplicador do EMOM / Rounds às repetições da linha
             reps_totais = reps_base * multiplicador_global
 
-            # MATRIZ MULTI-CATEGORIA COMPLETA COM CADASTRADO AMPLIADO
+            # CLASSIFICAÇÃO MULTI-CATEGORIA COMPLETA
 
             if any(k in linha_limpa for k in [
                 "squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", 
@@ -426,10 +426,10 @@ dias_semana = [
 if "treinos_semana" not in st.session_state:
     st.session_state["treinos_semana"] = {d["day"]: "" for d in dias_semana}
 
-# Processa o volume acumulado da semana considerando a lógica de EMOM, AMRAP e Rounds
+# Processa o volume acumulado
 vol_usado = extrair_volume_acumulado(list(st.session_state["treinos_semana"].values()))
 
-# TABELA LATERAL COM VALORES RECALCULADOS EM TEMPO REAL
+# TABELA LATERAL COM VALORES EXATOS RECALCULADOS EM TEMPO REAL
 tabela_volume = pd.DataFrame({
     "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
     "Target": [
@@ -572,13 +572,13 @@ for i, tab in enumerate(tabs):
                 with c_time3:
                     t_l = st.number_input("Skill (min)", 0, 60, 10, key=f"t_cf_l_{i}")
                 with c_text3:
-                    l_input = st.text_area(f"3. Skill ({t_l}')", "", height=90, key=f"cf_l_{i}")
+                    l_input = st.text_area(f"3. Skill ({t_l}')", "", height=110, key=f"cf_l_{i}")
 
                 c_time4, c_text4 = st.columns([1, 3])
                 with c_time4:
                     t_m = st.number_input("WOD (min)", 1, 60, 15, key=f"t_cf_m_{i}")
                 with c_text4:
-                    m_input = st.text_area(f"4. WOD ({t_m}')", "", height=110, key=f"cf_wod_{i}")
+                    m_input = st.text_area(f"4. WOD ({t_m}')", "", height=130, key=f"cf_wod_{i}")
 
                 c_time5, c_text5 = st.columns([1, 3])
                 with c_time5:
