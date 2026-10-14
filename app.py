@@ -108,52 +108,7 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": round(base["Run"] * fator, 1)
     }
 
-# --- DICIONÁRIO E BANCO DE DADOS INTELIGENTE DE EXERCÍCIOS ---
-DICIONARIO_EXERCICIOS = {
-    "snatch": [
-        "snatch", "power snatch", "hang snatch", "squat snatch", "hang power snatch", 
-        "snatch balance", "snatch pull", "db snatch", "dumbbell snatch"
-    ],
-    "clean_jerk": [
-        "clean & jerk", "clean and jerk", "clean", "power clean", "hang clean", "squat clean", 
-        "hang power clean", "jerk", "push jerk", "split jerk", "db hang clean & jerks", 
-        "db hang clean", "db clean", "clean pull"
-    ],
-    "core": [
-        "toes to bar", "toes-to-bar", "ttb", "t2b", "strict toes to bar",
-        "knees to elbow", "knees-to-elbow", "kte", "k2e",
-        "abmat", "sit up", "sit-up", "situp", "sit ups",
-        "v-up", "v up", "v-ups", "v ups",
-        "hollow rock", "hollow hold", "hollow",
-        "plank", "prancha", "side plank",
-        "l-sit", "l sit", "leg raise", "elevacao de pernas",
-        "hanging leg raise", "russian twist"
-    ],
-    "pull": [
-        "strict pull up", "strict pull-up", "pull up", "pull-up", "pullup", "pull ups", "pull-ups",
-        "chest to bar", "chest-to-bar", "c2b",
-        "bar muscle up", "bar muscle-up", "bmu", "ring muscle up", "ring muscle-up", "rmu", "muscle up", "muscle-up",
-        "ring row", "remada", "rowing", "barbell row", "db row", "rope climb"
-    ],
-    "push": [
-        "push up", "push-up", "pushup", "push ups", "flexao", "flexão",
-        "hspu", "handstand push up", "handstand push-up",
-        "strict press", "shoulder press", "press", "push press",
-        "dip", "dips", "bench press", "supino"
-    ],
-    "squat": [
-        "back squat", "front squat", "overhead squat", "ohs",
-        "goblet squat", "air squat", "squat", "agacho", "agachamento",
-        "thruster", "thrusters", "wall ball", "wallball", "lunge", "lunges", "pistol"
-    ],
-    "hinge": [
-        "deadlift", "dead lifts", "levantamento terra", "terra", "rdl",
-        "kettlebell swing", "kb swing", "american swing", "russian swing", "swing",
-        "good morning", "hip thrust"
-    ]
-}
-
-# --- ALGORITMO AVANÇADO DE EXTRAÇÃO COM DADOS SEPARADOS POR BLOCO ---
+# --- ALGORITMO MULTI-CATEGORIA (CADA EXERCÍCIO PONTUA EM TODAS AS SUAS FUNÇÕES BIOMECÂNICAS) ---
 def extrair_volume_acumulado(todos_textos_semana):
     texto = " ".join(todos_textos_semana).lower()
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
@@ -164,7 +119,7 @@ def extrair_volume_acumulado(todos_textos_semana):
         if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
             continue
             
-        # 1. LEITURA ESPECIAL DE CORRIDA EM METROS OU KM
+        # 1. LEITURA DE CORRIDA (M / KM)
         if "run" in linha_limpa or "corrida" in linha_limpa or "km" in linha_limpa:
             m_metros = re.findall(r'(\d+)\s*m\b', linha_limpa)
             if m_metros:
@@ -193,21 +148,50 @@ def extrair_volume_acumulado(todos_textos_semana):
         if reps == 0:
             continue
 
-        # CATEGORIZAÇÃO ESTREITA POR PRIORIDADE TÉCNICA
-        if any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["snatch"]):
-            vol["Snatch"] += reps
-        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["clean_jerk"]):
-            vol["Clean & Jerk"] += reps
-        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["core"]):
-            vol["Core"] += reps
-        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["pull"]):
-            vol["Pull"] += reps
-        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["push"]):
-            vol["Push"] += reps
-        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["squat"]):
+        # MATRIZ MULTI-CATEGORIA INDEPENDENTE
+
+        # 1. SQUAT (Gasta cota de agachamento)
+        if any(k in linha_limpa for k in [
+            "squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", 
+            "lunge", "lunges", "passada", "pistol", "squat clean", "squat snatch", "front squat", "back squat", "ohs"
+        ]):
             vol["Squat"] += reps
-        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["hinge"]):
+
+        # 2. HINGE (Cadeia posterior / Quadril)
+        if any(k in linha_limpa for k in [
+            "deadlift", "terra", "rdl", "snatch", "clean", "swing", "good morning", "hip thrust"
+        ]):
             vol["Hinge"] += reps
+
+        # 3. PUSH (Empurrar superior)
+        if any(k in linha_limpa for k in [
+            "push", "press", "jerk", "thruster", "hspu", "dip", "dips", "bench", "flexao", "flexão", "supino", "wall ball", "wallball"
+        ]):
+            vol["Push"] += reps
+
+        # 4. PULL (Puxada superior)
+        if any(k in linha_limpa for k in [
+            "pull", "pullup", "c2b", "chest to bar", "muscle up", "muscle-up", "row", "remada", "rope climb", "puxada"
+        ]):
+            vol["Pull"] += reps
+
+        # 5. CORE (Flexão e estabilização de tronco)
+        if any(k in linha_limpa for k in [
+            "toes to bar", "ttb", "knees to elbow", "kte", "sit up", "situp", "v-up", "hollow", "plank", "prancha", "l-sit", "abmat"
+        ]):
+            vol["Core"] += reps
+
+        # 6. SNATCH (LPO Específico)
+        if any(k in linha_limpa for k in [
+            "snatch", "arranco", "snatch balance"
+        ]):
+            vol["Snatch"] += reps
+
+        # 7. CLEAN & JERK (LPO Específico)
+        if any(k in linha_limpa for k in [
+            "clean", "jerk", "arremesso", "clean & jerk", "clean and jerk"
+        ]):
+            vol["Clean & Jerk"] += reps
 
     return vol
 
@@ -394,10 +378,10 @@ dias_semana = [
 if "treinos_semana" not in st.session_state:
     st.session_state["treinos_semana"] = {d["day"]: "" for d in dias_semana}
 
-# Processa o volume atual de toda a semana
+# Processa o volume acumulado de toda a semana
 vol_usado = extrair_volume_acumulado(list(st.session_state["treinos_semana"].values()))
 
-# TABELA LATERAL COM AS CATEGORIAS DE LPO (SNATCH & CLEAN & JERK)
+# TABELA LATERAL COM MULTI-CATEGORIA INTEGRADA
 tabela_volume = pd.DataFrame({
     "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
     "Target": [
