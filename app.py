@@ -13,10 +13,11 @@ st.markdown("""
     .main { background-color: #121212; color: #E0E0E0; }
     .stMetric { background-color: #1E1E1E; padding: 10px; border-radius: 8px; }
     h1, h2, h3 { color: #D32F2F; font-family: 'Roboto', sans-serif; }
+    .stTable { font-size: 13px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DIRETO DA LOGO DA SUA PASTA ---
+# --- CARREGAMENTO DIRETO DA LOGO ---
 def carregar_logo():
     nomes_possiveis = [
         "Logo_e_mascote[1].png", 
@@ -45,7 +46,7 @@ def carregar_logo():
             
             st.sidebar.markdown(
                 f"""
-                <div style="text-align: center; padding-bottom: 15px;">
+                <div style="text-align: center; padding-bottom: 10px;">
                     <img src="data:image/png;base64,{encoded_string}" style="max-width: 100%; height: auto; border-radius: 8px;">
                 </div>
                 """,
@@ -60,7 +61,88 @@ carregar_logo()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
-# --- BANCO DE DADOS OFICIAL DA PLANILHA (BLOCKS & WEEKS) ---
+# --- TABELA DE VOLUME IDEAL DINÂMICO POR BLOCO E SEMANA ---
+def obter_metas_volume(bloco_sel, semana_sel):
+    # Valores base (Semana Normal de Acumulação)
+    base = {
+        "Squat": 140,
+        "Hinge": 90,
+        "Push": 80,
+        "Pull": 80,
+        "Run": 8.0
+    }
+    
+    # Ajuste por Foco do Bloco
+    if "Block 1" in bloco_sel or "Strength" in bloco_sel:
+        base["Squat"] += 30
+        base["Hinge"] += 20
+    elif "Block 2" in bloco_sel or "Engine" in bloco_sel:
+        base["Run"] += 4.0
+        base["Pull"] += 20
+    elif "Block 3" in bloco_sel or "Gymnastics" in bloco_sel:
+        base["Push"] += 30
+        base["Pull"] += 30
+    elif "Block 4" in bloco_sel or "Weightlifting" in bloco_sel:
+        base["Hinge"] += 30
+        base["Squat"] += 20
+
+    # Ajuste por Fase da Semana (Progression, Overload, Deload)
+    fator = 1.0
+    if "Progression" in semana_sel or "Week 2" in semana_sel:
+        fator = 1.15
+    elif "Overload" in semana_sel or "Week 3" in semana_sel:
+        fator = 1.30
+    elif "Deload" in semana_sel or "Week 4" in semana_sel:
+        fator = 0.65  # Redução de volume no Deload
+        
+    return {
+        "Squat": int(base["Squat"] * fator),
+        "Hinge": int(base["Hinge"] * fator),
+        "Push": int(base["Push"] * fator),
+        "Pull": int(base["Pull"] * fator),
+        "Run": round(base["Run"] * fator, 1)
+    }
+
+# --- CONTADOR DE REPETIÇÕES EXTRAÍDAS DO TEXTO DOS TREINOS ---
+def extrair_volume_acumulado(todos_textos_semana):
+    texto = " ".join(todos_textos_semana).lower()
+    
+    vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Run": 0.0}
+    
+    # Extrai repetições por padrão de movimento
+    linhas = texto.split("\n")
+    for linha in linhas:
+        # Busca números e multiplicadores (ex: 5x10, 21-15-9, 50 reps)
+        reps = 0
+        m_mult = re.search(r'(\d+)\s*x\s*(\d+)', linha)
+        if m_mult:
+            reps = int(m_mult.group(1)) * int(m_mult.group(2))
+        else:
+            nums = re.findall(r'\b\d+\b', linha)
+            if nums:
+                reps = sum([int(n) for n in nums if int(n) < 300])
+
+        if any(k in linha for k in ["squat", "agacho", "thruster", "wall ball", "lunge"]):
+            vol["Squat"] += reps
+        elif any(k in linha for k in ["deadlift", "terra", "snatch", "clean", "swing", "hinge", "rdl"]):
+            vol["Hinge"] += reps
+        elif any(k in linha for k in ["push", "press", "jerk", "hspu", "dip", "bench"]):
+            vol["Push"] += reps
+        elif any(k in linha for k in ["pull", "puxada", "row", "remada", "chest to bar", "muscle-up"]):
+            vol["Pull"] += reps
+        elif any(k in linha for k in ["run", "corrida", "km", "m run"]):
+            if "km" in linha:
+                kms = re.findall(r'(\d+(?:\.\d+)?)\s*km', linha)
+                if kms:
+                    vol["Run"] += float(kms[0])
+            elif "m run" in linha:
+                metros = re.findall(r'(\d+)\s*m run', linha)
+                if metros:
+                    vol["Run"] += sum([int(m) for m in metros]) / 1000.0
+
+    return vol
+
+# --- BANCO DE DADOS METODOLÓGICO (BLOCKS & WEEKS) ---
 METODOLOGIA_BASE = {
     "Block 1": {
         "Week 1": {
@@ -152,60 +234,6 @@ METODOLOGIA_BASE = {
     }
 }
 
-# --- ALGORITMO DE ANÁLISE DE VOLUME E INTENSIDADE DO TREINO DIGITADO ---
-def analisar_treino_diario(texto_treino, t_strength, t_wod):
-    texto = texto_treino.lower()
-    
-    # 1. Análise de Volume (Repetições / Séries encontradas no texto)
-    vol_score = 10  # Pontuação base
-    
-    # Busca por padrões de repetições/séries (ex: 5x5, 4x8, 21-15-9, 50 reps)
-    sets_reps = re.findall(r'(\d+)\s*x\s*(\d+)', texto)
-    for s, r in sets_reps:
-        vol_score += int(s) * int(r) * 0.4
-        
-    numeros = re.findall(r'\b\d+\b', texto)
-    if numeros:
-        soma_nums = sum([int(n) for n in numeros if int(n) < 500])
-        vol_score += soma_nums * 0.1
-        
-    # Ponderação por tempo de WOD
-    vol_score += t_wod * 0.8
-
-    # 2. Análise de Intensidade (Cargas, Porcentagens %RM, RPE e Exercícios Pesados)
-    int_score = 10  # Pontuação base
-    
-    # Busca por %RM ou RPE no texto
-    porcentagens = re.findall(r'(\d+)%', texto)
-    if porcentagens:
-        pct_max = max([int(p) for p in porcentagens])
-        if pct_max >= 85:
-            int_score += 35
-        elif pct_max >= 75:
-            int_score += 25
-        elif pct_max >= 65:
-            int_score += 15
-            
-    rpes = re.findall(r'rpe\s*(\d+)', texto)
-    if rpes:
-        rpe_max = max([int(r) for r in rpes])
-        if rpe_max >= 9:
-            int_score += 30
-        elif rpe_max >= 8:
-            int_score += 20
-
-    # Adiciona intensidade se houver exercícios neuromusculares de carga/potência
-    if any(k in texto for k in ["deadlift", "terra", "heavy", "1rm", "3rm", "5rm"]):
-        int_score += 20
-    if any(k in texto for k in ["squat", "snatch", "clean", "jerk", "press"]):
-        int_score += 15
-    if any(k in texto for k in ["hyrox", "athx", "sprint"]):
-        int_score += 15
-
-    int_score += t_strength * 1.2
-    
-    return round(vol_score, 1), round(int_score, 1)
-
 # --- GERADOR DE SUGESTÕES AUTOMÁTICAS ---
 def gerar_todas_sugestoes(bloco_sel, semana_sel, strength_txt, skill_txt, wod_txt):
     key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1]
@@ -279,17 +307,48 @@ semana = st.sidebar.selectbox("Periodization Week", [
     "Week 4 - Deload / Benchmark"
 ])
 
+# Obter Metas de Volume Automáticas para o Bloco e Semana selecionados
+metas = obter_metas_volume(bloco, semana)
+
 st.sidebar.markdown("---")
-st.sidebar.header("📊 MCVS & Volume Control")
+st.sidebar.header("📊 MCVS & Weekly Volume Control")
 
-vol_squat = st.sidebar.number_input("Squat Volume (Ideal: 120-180)", value=140)
-vol_hinge = st.sidebar.number_input("Hinge / LPO Volume (Ideal: 80-120)", value=90)
-vol_push = st.sidebar.number_input("Push Volume (Ideal: 60-100)", value=70)
-vol_pull = st.sidebar.number_input("Pull Volume (Ideal: 60-100)", value=75)
-vol_run = st.sidebar.number_input("Running Volume KM (Ideal: 6-12 km)", value=8.0)
+# --- GRADE SEMANAL E CAPTURA DE TEXTO PROGRAMADO ---
+dias_semana = [
+    {"day": "Monday", "focus": "HYROX"},
+    {"day": "Tuesday", "focus": "CrossFit - Strength / LPO"},
+    {"day": "Wednesday", "focus": "CrossFit - Gymnastics"},
+    {"day": "Thursday", "focus": "CrossFit - Engine"},
+    {"day": "Friday", "focus": "ATHX"},
+    {"day": "Saturday", "focus": "Community WOD"},
+    {"day": "Sunday", "focus": "Benchmark / Hero"}
+]
 
-# Cálculo IACS
-iacs_score = (vol_squat * 0.15) + (vol_hinge * 0.2) + (vol_push * 0.15) + (vol_pull * 0.15) + (vol_run * 3)
+# Inicializa sessão para capturar os treinos digitados
+if "treinos_semana" not in st.session_state:
+    st.session_state["treinos_semana"] = {d["day"]: "" for d in dias_semana}
+
+# Calcula Volume Atual Programado
+vol_usado = extrair_volume_acumulado(list(st.session_state["treinos_semana"].values()))
+
+# Tabela Compacta de Controle de Volume Lateral
+tabela_volume = pd.DataFrame({
+    "Pattern": ["Squat", "Hinge", "Push", "Pull", "Run (KM)"],
+    "Target": [metas["Squat"], metas["Hinge"], metas["Push"], metas["Pull"], metas["Run"]],
+    "Used": [vol_usado["Squat"], vol_usado["Hinge"], vol_usado["Push"], vol_usado["Pull"], vol_usado["Run"]],
+    "Balance": [
+        metas["Squat"] - vol_usado["Squat"],
+        metas["Hinge"] - vol_usado["Hinge"],
+        metas["Push"] - vol_usado["Push"],
+        metas["Pull"] - vol_usado["Pull"],
+        round(metas["Run"] - vol_usado["Run"], 1)
+    ]
+})
+
+st.sidebar.table(tabela_volume)
+
+# Cálculo IACS baseado no volume usado vs target
+iacs_score = (vol_usado["Squat"] * 0.15) + (vol_usado["Hinge"] * 0.2) + (vol_usado["Push"] * 0.15) + (vol_usado["Pull"] * 0.15) + (vol_usado["Run"] * 3)
 
 st.sidebar.metric("Alpha Load Index (IACS)", f"{int(iacs_score)} pts")
 
@@ -304,23 +363,15 @@ elif iacs_score <= 90:
 else:
     st.sidebar.error("⚠️ Not Recommended for Regular Classes")
 
-# --- GRADE SEMANAL CONFORME A ABA SETTINGS ---
-dias_semana = [
-    {"day": "Monday", "focus": "HYROX"},
-    {"day": "Tuesday", "focus": "CrossFit - Strength / LPO"},
-    {"day": "Wednesday", "focus": "CrossFit - Gymnastics"},
-    {"day": "Thursday", "focus": "CrossFit - Engine"},
-    {"day": "Friday", "focus": "ATHX"},
-    {"day": "Saturday", "focus": "Community WOD"},
-    {"day": "Sunday", "focus": "Benchmark / Hero"}
-]
-
+# --- CONSTRUÇÃO DAS ABAS DIÁRIAS ---
 tabs = st.tabs([d["day"] for d in dias_semana])
 
 for i, tab in enumerate(tabs):
     day_info = dias_semana[i]
+    day_name = day_info["day"]
+    
     with tab:
-        st.subheader(f"{day_info['day']} — {day_info['focus']}")
+        st.subheader(f"{day_name} — {day_info['focus']}")
         
         col1, col2 = st.columns([1.2, 1])
         
@@ -330,8 +381,7 @@ for i, tab in enumerate(tabs):
             t_s = 0
             t_m = 0
             
-            # --- SEGUNDA: HYROX ---
-            if day_info["day"] == "Monday":
+            if day_name == "Monday":
                 st.info("🏃 **HYROX Session:** Running + Functional Stations")
                 
                 c_time1, c_text1 = st.columns([1, 3])
@@ -357,8 +407,7 @@ for i, tab in enumerate(tabs):
                 
                 total_time = t_w + t_m + t_r
 
-            # --- SEXTA: ATHX ---
-            elif day_info["day"] == "Friday":
+            elif day_name == "Friday":
                 st.info("🔥 **ATHX Session:** Fixed Structure (Strength Max + Endurance + MetCon X)")
                 
                 c_time1, c_text1 = st.columns([1, 3])
@@ -393,7 +442,6 @@ for i, tab in enumerate(tabs):
 
                 total_time = t_w + t_s + t_e + t_m + t_r
 
-            # --- CROSSFIT PADRÃO ---
             else:
                 c_time1, c_text1 = st.columns([1, 3])
                 with c_time1:
@@ -433,35 +481,29 @@ for i, tab in enumerate(tabs):
 
                 total_time = t_w + t_s + t_l + t_m + t_a + t_r
 
+            # Atualiza no estado global para somar o volume semanal
+            st.session_state["treinos_semana"][day_name] = w_input + " " + s_input + " " + l_input + " " + m_input
+
             # Totalizador do Tempo Cap da Sessão
             if total_time > 60:
                 st.warning(f"⚠️ **Session Time Alert:** Total duration is **{total_time} min** (Standard limit: 60 min).")
             else:
                 st.success(f"⏱️ **Session Total Duration:** **{total_time} min** / 60 min")
 
-            # --- DIFICULDADE E ANÁLISE DINÂMICA DA SESSÃO ---
+            # --- DIFICULDADE DA SESSÃO DO DIA ---
             st.markdown("---")
-            st.markdown("### ⚡ Daily Session Load & Fatigue Analysis")
-            
-            texto_sessao = w_input + " " + s_input + " " + l_input + " " + m_input
-            v_score, i_score = analisar_treino_diario(texto_sessao, t_s, t_m)
-            
-            # Exibe métricas de Volume e Intensidade
-            col_m1, col_m2 = st.columns(2)
-            col_m1.metric("📦 Volume Score (Reps / Sets)", f"{v_score} pts")
-            col_m2.metric("🔥 Intensity Score (%RM / RPE / Load)", f"{i_score} pts")
-            
-            # Cálculo final do nível de fadiga do dia (Volume x Intensidade)
-            soma_diaria = v_score + i_score
-            
-            if soma_diaria <= 35:
-                st.info(f"🟢 **Daily Session Level:** Level 1 - Low Fatigue (~{int(soma_diaria)} pts) | *Ideal Target: Active Recovery / Skill*")
-            elif soma_diaria <= 65:
-                st.success(f"🟡 **Daily Session Level:** Level 2 - Moderate Fatigue (~{int(soma_diaria)} pts) | *Ideal Target: Volume / Progression*")
-            elif soma_diaria <= 95:
-                st.warning(f"🟠 **Daily Session Level:** Level 3 - High Fatigue (~{int(soma_diaria)} pts) | *Ideal Target: Heavy Strength / MetCon*")
+            daily_pts = (t_s * 1.5) + (t_m * 2.0)
+            if "HYROX" in day_info["focus"] or "ATHX" in day_info["focus"]:
+                daily_pts += 15
+                
+            if daily_pts <= 25:
+                st.info(f"🟢 **Daily Session Level:** Level 1 - Low Fatigue (~{int(daily_pts)} pts)")
+            elif daily_pts <= 45:
+                st.success(f"🟡 **Daily Session Level:** Level 2 - Moderate Fatigue (~{int(daily_pts)} pts)")
+            elif daily_pts <= 65:
+                st.warning(f"🟠 **Daily Session Level:** Level 3 - High Fatigue (~{int(daily_pts)} pts)")
             else:
-                st.error(f"🔴 **Daily Session Level:** Level 4 - Very High / Shock Session (~{int(soma_diaria)} pts) | *Requires Extended Recovery*")
+                st.error(f"🔴 **Daily Session Level:** Level 4 - Very High / Shock Session (~{int(daily_pts)} pts)")
 
         with col2:
             st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
