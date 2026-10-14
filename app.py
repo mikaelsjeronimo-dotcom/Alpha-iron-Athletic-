@@ -69,6 +69,8 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Push": 80,
         "Pull": 80,
         "Core": 100,
+        "Snatch": 45,
+        "Clean & Jerk": 50,
         "Run": 8.0
     }
     
@@ -83,8 +85,9 @@ def obter_metas_volume(bloco_sel, semana_sel):
         base["Pull"] += 30
         base["Core"] += 40
     elif "Block 4" in bloco_sel or "Weightlifting" in bloco_sel:
-        base["Hinge"] += 30
-        base["Squat"] += 20
+        base["Snatch"] += 25
+        base["Clean & Jerk"] += 30
+        base["Hinge"] += 20
 
     fator = 1.0
     if "Progression" in semana_sel or "Week 2" in semana_sel:
@@ -100,64 +103,60 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Push": int(base["Push"] * fator),
         "Pull": int(base["Pull"] * fator),
         "Core": int(base["Core"] * fator),
+        "Snatch": int(base["Snatch"] * fator),
+        "Clean & Jerk": int(base["Clean & Jerk"] * fator),
         "Run": round(base["Run"] * fator, 1)
     }
 
 # --- DICIONÁRIO E BANCO DE DADOS INTELIGENTE DE EXERCÍCIOS ---
 DICIONARIO_EXERCICIOS = {
+    "snatch": [
+        "snatch", "power snatch", "hang snatch", "squat snatch", "hang power snatch", 
+        "snatch balance", "snatch pull", "db snatch", "dumbbell snatch"
+    ],
+    "clean_jerk": [
+        "clean & jerk", "clean and jerk", "clean", "power clean", "hang clean", "squat clean", 
+        "hang power clean", "jerk", "push jerk", "split jerk", "db hang clean & jerks", 
+        "db hang clean", "db clean", "clean pull"
+    ],
     "core": [
-        "toes to bar", "toes-to-bar", "ttb", "t2b",
+        "toes to bar", "toes-to-bar", "ttb", "t2b", "strict toes to bar",
         "knees to elbow", "knees-to-elbow", "kte", "k2e",
         "abmat", "sit up", "sit-up", "situp", "sit ups",
         "v-up", "v up", "v-ups", "v ups",
         "hollow rock", "hollow hold", "hollow",
         "plank", "prancha", "side plank",
         "l-sit", "l sit", "leg raise", "elevacao de pernas",
-        "hanging leg raise", "russian twist", "dragon flag"
+        "hanging leg raise", "russian twist"
     ],
     "pull": [
         "strict pull up", "strict pull-up", "pull up", "pull-up", "pullup", "pull ups", "pull-ups",
         "chest to bar", "chest-to-bar", "c2b",
         "bar muscle up", "bar muscle-up", "bmu", "ring muscle up", "ring muscle-up", "rmu", "muscle up", "muscle-up",
-        "ring row", "remada na fita", "remada", "rowing",
-        "barbell row", "remada curvada", "db row", "dumbell row", "kb row",
-        "rope climb", "subida de corda", "rope climb legless",
-        "lat pulldown", "puxada alta", "face pull"
+        "ring row", "remada", "rowing", "barbell row", "db row", "rope climb"
     ],
     "push": [
-        "push up", "push-up", "pushup", "push ups", "push-ups", "flexao", "flexão",
-        "hspu", "handstand push up", "handstand push-up", "flexao na parada de mao",
-        "strict press", "shoulder press", "press", "desenvolvimento",
-        "push press", "push jerk", "split jerk", "jerk",
-        "dip", "dips", "paralela", "ring dip",
-        "bench press", "supino", "db bench press", "sots press"
+        "push up", "push-up", "pushup", "push ups", "flexao", "flexão",
+        "hspu", "handstand push up", "handstand push-up",
+        "strict press", "shoulder press", "press", "push press",
+        "dip", "dips", "bench press", "supino"
     ],
     "squat": [
-        "back squat", "agachamento costas",
-        "front squat", "agachamento frente",
-        "overhead squat", "ohs",
-        "goblet squat", "air squat", "agachamento livre", "squat", "agacho", "agachamento",
-        "thruster", "thrusters",
-        "wall ball", "wallball", "wall balls",
-        "lunge", "lunges", "passada", "passadas", "bulgarian split squat",
-        "pistol", "pistols", "cossack squat"
+        "back squat", "front squat", "overhead squat", "ohs",
+        "goblet squat", "air squat", "squat", "agacho", "agachamento",
+        "thruster", "thrusters", "wall ball", "wallball", "lunge", "lunges", "pistol"
     ],
     "hinge": [
-        "deadlift", "dead lifts", "levantamento terra", "terra", "rdl", "romanian deadlift",
-        "snatch", "power snatch", "hang snatch", "squat snatch", "hang power snatch", "snatch pull",
-        "clean", "power clean", "hang clean", "squat clean", "hang power clean", "clean pull",
+        "deadlift", "dead lifts", "levantamento terra", "terra", "rdl",
         "kettlebell swing", "kb swing", "american swing", "russian swing", "swing",
-        "good morning", "hip thrust", "glute bridge"
-    ],
-    "run": [
-        "run", "running", "corrida", "correr", "shuttle run", "sprint"
+        "good morning", "hip thrust"
     ]
 }
 
-# --- ALGORITMO AVANÇADO DE EXTRAÇÃO E RECONHECIMENTO DE PADRÕES ---
+# --- ALGORITMO AVANÇADO DE EXTRAÇÃO COM DADOS SEPARADOS POR BLOCO ---
 def extrair_volume_acumulado(todos_textos_semana):
     texto = " ".join(todos_textos_semana).lower()
-    vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Run": 0.0}
+    vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
     
     linhas = texto.split("\n")
     for linha in linhas:
@@ -165,21 +164,26 @@ def extrair_volume_acumulado(todos_textos_semana):
         if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
             continue
             
+        # 1. LEITURA ESPECIAL DE CORRIDA EM METROS OU KM
+        if "run" in linha_limpa or "corrida" in linha_limpa or "km" in linha_limpa:
+            m_metros = re.findall(r'(\d+)\s*m\b', linha_limpa)
+            if m_metros:
+                vol["Run"] += sum([int(m) for m in m_metros]) / 1000.0
+            m_kms = re.findall(r'(\d+(?:\.\d+)?)\s*km\b', linha_limpa)
+            if m_kms:
+                vol["Run"] += sum([float(k) for k in m_kms])
+
         reps = 0
-        
-        # 1. Procura por multiplicadores de séries (ex: 4x8, 5x10, 3x12)
         m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_limpa)
         if m_mult:
             for s, r in m_mult:
                 reps += int(s) * int(r)
         else:
-            # 2. Procura por esquemas de repetições (ex: 21-15-9, 15-12-9)
             esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_limpa)
             if esquema_hifen:
                 for a, b, c in esquema_hifen:
                     reps += int(a) + int(b) + int(c)
             else:
-                # 3. Procura por contagem direta de repetições
                 nums = re.findall(r'\b(\d+)\b', linha_limpa)
                 if nums:
                     reps_encontradas = [int(n) for n in nums if int(n) <= 300]
@@ -189,33 +193,21 @@ def extrair_volume_acumulado(todos_textos_semana):
         if reps == 0:
             continue
 
-        # CLASSIFICAÇÃO RIGOROSA BASEADA NO BANCO DE DADOS DE EXERCÍCIOS
-        
-        # 1º CORE (Verifica primeiro para não confundir TTB com Pull por causa de "bar")
-        if any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["core"]):
+        # CATEGORIZAÇÃO ESTREITA POR PRIORIDADE TÉCNICA
+        if any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["snatch"]):
+            vol["Snatch"] += reps
+        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["clean_jerk"]):
+            vol["Clean & Jerk"] += reps
+        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["core"]):
             vol["Core"] += reps
-        # 2º PULL
         elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["pull"]):
             vol["Pull"] += reps
-        # 3º PUSH
         elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["push"]):
             vol["Push"] += reps
-        # 4º SQUAT
         elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["squat"]):
             vol["Squat"] += reps
-        # 5º HINGE
         elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["hinge"]):
             vol["Hinge"] += reps
-        # 6º RUN / CORRIDA
-        elif any(ex in linha_limpa for ex in DICIONARIO_EXERCICIOS["run"]):
-            if "km" in linha_limpa:
-                kms = re.findall(r'(\d+(?:\.\d+)?)\s*km', linha_limpa)
-                if kms:
-                    vol["Run"] += float(kms[0])
-            elif "m run" in linha_limpa or "m corrida" in linha_limpa or "m" in linha_limpa:
-                metros = re.findall(r'(\d+)\s*m', linha_limpa)
-                if metros:
-                    vol["Run"] += sum([int(m) for m in metros if int(m) >= 100]) / 1000.0
 
     return vol
 
@@ -402,27 +394,42 @@ dias_semana = [
 if "treinos_semana" not in st.session_state:
     st.session_state["treinos_semana"] = {d["day"]: "" for d in dias_semana}
 
-# Processa o volume atual de toda a semana com o novo algoritmo inteligente
+# Processa o volume atual de toda a semana
 vol_usado = extrair_volume_acumulado(list(st.session_state["treinos_semana"].values()))
 
-# TABELA LATERAL COM A CATEGORIA CORE ADICIONADA
+# TABELA LATERAL COM AS CATEGORIAS DE LPO (SNATCH & CLEAN & JERK)
 tabela_volume = pd.DataFrame({
-    "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Run (KM)"],
-    "Target": [f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", f"{int(metas['Pull'])}", f"{int(metas['Core'])}", f"{metas['Run']} km"],
-    "Used": [f"{int(vol_usado['Squat'])}", f"{int(vol_usado['Hinge'])}", f"{int(vol_usado['Push'])}", f"{int(vol_usado['Pull'])}", f"{int(vol_usado['Core'])}", f"{vol_usado['Run']} km"],
+    "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
+    "Target": [
+        f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", 
+        f"{int(metas['Pull'])}", f"{int(metas['Core'])}", f"{int(metas['Snatch'])}", 
+        f"{int(metas['Clean & Jerk'])}", f"{metas['Run']} km"
+    ],
+    "Used": [
+        f"{int(vol_usado['Squat'])}", f"{int(vol_usado['Hinge'])}", f"{int(vol_usado['Push'])}", 
+        f"{int(vol_usado['Pull'])}", f"{int(vol_usado['Core'])}", f"{int(vol_usado['Snatch'])}", 
+        f"{int(vol_usado['Clean & Jerk'])}", f"{round(vol_usado['Run'], 2)} km"
+    ],
     "Balance": [
         f"{int(metas['Squat'] - vol_usado['Squat'])}",
         f"{int(metas['Hinge'] - vol_usado['Hinge'])}",
         f"{int(metas['Push'] - vol_usado['Push'])}",
         f"{int(metas['Pull'] - vol_usado['Pull'])}",
         f"{int(metas['Core'] - vol_usado['Core'])}",
-        f"{round(metas['Run'] - vol_usado['Run'], 1)} km"
+        f"{int(metas['Snatch'] - vol_usado['Snatch'])}",
+        f"{int(metas['Clean & Jerk'] - vol_usado['Clean & Jerk'])}",
+        f"{round(metas['Run'] - vol_usado['Run'], 2)} km"
     ]
 })
 
 st.sidebar.table(tabela_volume)
 
-iacs_score = (vol_usado["Squat"] * 0.15) + (vol_usado["Hinge"] * 0.2) + (vol_usado["Push"] * 0.15) + (vol_usado["Pull"] * 0.15) + (vol_usado["Core"] * 0.1) + (vol_usado["Run"] * 3)
+iacs_score = (
+    (vol_usado["Squat"] * 0.12) + (vol_usado["Hinge"] * 0.15) + 
+    (vol_usado["Push"] * 0.12) + (vol_usado["Pull"] * 0.12) + 
+    (vol_usado["Core"] * 0.08) + (vol_usado["Snatch"] * 0.2) + 
+    (vol_usado["Clean & Jerk"] * 0.2) + (vol_usado["Run"] * 3)
+)
 
 st.sidebar.metric("Alpha Load Index (IACS)", f"{int(iacs_score)} pts")
 
