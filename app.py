@@ -15,7 +15,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DIRETO DA LOGO DA SUA PASTA ---
+# --- CARREGAMENTO DIRETO DA LOGO ---
 def carregar_logo():
     nomes_possiveis = [
         "Logo_e_mascote[1].png", 
@@ -59,7 +59,7 @@ carregar_logo()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
-# --- BANCO DE DADOS OFICIAL DA PLANILHA (BLOCKS & WEEKS) ---
+# --- BANCO DE DADOS OFICIAL (BLOCKS & WEEKS) ---
 METODOLOGIA_BASE = {
     "Block 1": {
         "Week 1": {
@@ -227,22 +227,11 @@ semana = st.sidebar.selectbox("Periodization Week", [
 st.sidebar.markdown("---")
 st.sidebar.header("📊 MCVS & Volume Control")
 
-vol_squat = st.sidebar.number_input("Squat Volume", value=140)
-vol_hinge = st.sidebar.number_input("Hinge / LPO Volume", value=90)
-vol_push = st.sidebar.number_input("Push Volume", value=70)
-vol_pull = st.sidebar.number_input("Pull Volume", value=75)
-vol_run = st.sidebar.number_input("Running Volume (KM)", value=8.0)
-
-# Tabela de Comparação de Volume Mínimo, Ideal e Máximo conforme MCVS Metodológica
-mcvs_df = pd.DataFrame({
-    "Pattern": ["Squat", "Hinge / LPO", "Push", "Pull", "Run (KM)"],
-    "Current": [vol_squat, vol_hinge, vol_push, vol_pull, vol_run],
-    "Ideal Target": ["120 - 180", "80 - 120", "60 - 100", "60 - 100", "6 - 12 km"],
-    "Max Limit": ["220", "150", "120", "120", "15 km"]
-})
-
-st.sidebar.markdown("### 📋 Volume Control (MCVS)")
-st.sidebar.table(mcvs_df)
+vol_squat = st.sidebar.number_input("Squat Volume (Ideal: 120-180)", value=140)
+vol_hinge = st.sidebar.number_input("Hinge / LPO Volume (Ideal: 80-120)", value=90)
+vol_push = st.sidebar.number_input("Push Volume (Ideal: 60-100)", value=70)
+vol_pull = st.sidebar.number_input("Pull Volume (Ideal: 60-100)", value=75)
+vol_run = st.sidebar.number_input("Running Volume KM (Ideal: 6-12 km)", value=8.0)
 
 # Cálculo IACS
 iacs_score = (vol_squat * 0.15) + (vol_hinge * 0.2) + (vol_push * 0.15) + (vol_pull * 0.15) + (vol_run * 3)
@@ -282,6 +271,10 @@ for i, tab in enumerate(tabs):
         
         with col1:
             st.markdown("### 📋 Session Structure (60 min)")
+            
+            # Inicialização de variáveis
+            t_s = 0
+            t_m = 0
             
             # --- SEGUNDA: HYROX ---
             if day_info["day"] == "Monday":
@@ -392,21 +385,20 @@ for i, tab in enumerate(tabs):
             else:
                 st.success(f"⏱️ **Session Total Duration:** **{total_time} min** / 60 min")
 
-            # --- DIFICULDADE / FADIGA DO DIA (DAILY FATIGUE SCORE) ---
+            # --- DIFICULDADE DA SESSÃO ---
             st.markdown("---")
-            st.markdown("### ⚡ Daily Fatigue Score (RPE & Intensity)")
             daily_pts = (t_s * 1.5) + (t_m * 2.0)
             if "HYROX" in day_info["focus"] or "ATHX" in day_info["focus"]:
                 daily_pts += 15
                 
             if daily_pts <= 25:
-                st.info(f"🟢 **Daily Level:** Level 1 - Low Fatigue (~{int(daily_pts)} pts)")
+                st.info(f"🟢 **Daily Session Level:** Level 1 - Low Fatigue (~{int(daily_pts)} pts)")
             elif daily_pts <= 45:
-                st.success(f"🟡 **Daily Level:** Level 2 - Moderate Fatigue (~{int(daily_pts)} pts)")
+                st.success(f"🟡 **Daily Session Level:** Level 2 - Moderate Fatigue (~{int(daily_pts)} pts)")
             elif daily_pts <= 65:
-                st.warning(f"🟠 **Daily Level:** Level 3 - High Fatigue (~{int(daily_pts)} pts)")
+                st.warning(f"🟠 **Daily Session Level:** Level 3 - High Fatigue (~{int(daily_pts)} pts)")
             else:
-                st.error(f"🔴 **Daily Level:** Level 4 - Very High / Shock Session (~{int(daily_pts)} pts)")
+                st.error(f"🔴 **Daily Session Level:** Level 4 - Very High / Shock Session (~{int(daily_pts)} pts)")
 
         with col2:
             st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
