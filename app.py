@@ -5,7 +5,6 @@ import glob
 import base64
 import re
 import json
-from PIL import Image
 
 # --- ARQUIVO DE PERSISTÊNCIA EM TEMPO REAL ---
 DB_FILE = "treinos_salvos.json"
@@ -26,18 +25,45 @@ def salvar_treinos_disco(dados):
     except Exception:
         pass
 
-# --- PROCESSAMENTO E OTIMIZAÇÃO EXATA DO FAVICON PARA O NAVEGADOR ---
-def carregar_favicon_otimizado():
+# 1. Configuração Básica da Página
+st.set_page_config(
+    page_title="Alpha Iron 2.0 - Workout Builder", 
+    layout="wide"
+)
+
+# --- INJEÇÃO FORÇADA DO FAVICON NA ABA DO NAVEGADOR VIA HTML (SEM FALHAS) ---
+def injetar_favicon_html():
     if os.path.exists("favicon.png"):
         try:
-            img = Image.open("favicon.png")
-            # Redimensiona para formato padrão de favicon (32x32) mantendo transparência/qualidade
-            img_rgba = img.convert("RGBA")
-            img_favicon = img_rgba.resize((32, 32), Image.Resampling.LANCZOS)
-            return img_favicon
+            with open("favicon.png", "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+            
+            st.markdown(
+                f"""
+                <script>
+                const doc = window.parent.document;
+                let link = doc.querySelector("link[rel*='icon']") || doc.createElement('link');
+                link.type = 'image/png';
+                link.rel = 'icon';
+                link.href = 'data:image/png;base64,{encoded}';
+                doc.getElementsByTagName('head')[0].appendChild(link);
+                </script>
+                """,
+                unsafe_allow_html=True
+            )
         except Exception:
             pass
-    return "🏋️‍♂️"
+
+injetar_favicon_html()
+
+st.markdown("""
+    <style>
+    .main { background-color: #121212; color: #E0E0E0; }
+    .stMetric { background-color: #1E1E1E; padding: 10px; border-radius: 8px; }
+    h1, h2, h3 { color: #D32F2F; font-family: 'Roboto', sans-serif; }
+    .stTable { font-size: 13px; }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- ENCONTRAR A LOGO DA SIDEBAR (IMAGEM DA BARRA LATERAL) ---
 def encontrar_logo_sidebar():
@@ -57,25 +83,7 @@ def encontrar_logo_sidebar():
     return None
 
 sidebar_logo_path = encontrar_logo_sidebar()
-favicon_img = carregar_favicon_otimizado()
 
-# 1. Configuração Visual da Página (Favicon real convertido em 32x32)
-st.set_page_config(
-    page_title="Alpha Iron 2.0 - Workout Builder", 
-    layout="wide", 
-    page_icon=favicon_img
-)
-
-st.markdown("""
-    <style>
-    .main { background-color: #121212; color: #E0E0E0; }
-    .stMetric { background-color: #1E1E1E; padding: 10px; border-radius: 8px; }
-    h1, h2, h3 { color: #D32F2F; font-family: 'Roboto', sans-serif; }
-    .stTable { font-size: 13px; }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- CARREGAMENTO DA SEGUNDA IMAGEM NA SIDEBAR ---
 def carregar_logo_sidebar():
     if sidebar_logo_path and os.path.exists(sidebar_logo_path):
         try:
