@@ -4,9 +4,34 @@ import os
 import glob
 import base64
 import re
+import json
 
-# --- BUSCA A LOGO OFICIAL PARA O FAVICON DA ABA DO NAVEGADOR ---
-def encontrar_logo():
+# --- ARQUIVO DE PERSISTÊNCIA EM TEMPO REAL (NUVEM / BANCO LOCAL) ---
+DB_FILE = "treinos_salvos.json"
+
+def carregar_treinos_salvos():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def salvar_treinos_disco(dados):
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        pass
+
+# --- IDENTIFICAÇÃO DAS DUAS IMAGENS (SISTEMA DE LOGO DUPLA) ---
+# Image 1: Favicon (Aba do Navegador) -> "favicon.png"
+# Image 2: Sidebar (Barra Lateral) -> "logo.png" ou "Logo_e_mascote.png"
+
+favicon_path = "favicon.png" if os.path.exists("favicon.png") else None
+
+def encontrar_logo_sidebar():
     nomes_possiveis = [
         "Logo_e_mascote[1].png", 
         "Logo_e_mascote.png", 
@@ -18,17 +43,17 @@ def encontrar_logo():
             return nome
     arquivos = glob.glob("*.png") + glob.glob("*.jpg") + glob.glob("*.jpeg")
     for f in arquivos:
-        if "logo" in f.lower() or "mascote" in f.lower():
+        if "favicon" not in f.lower() and ("logo" in f.lower() or "mascote" in f.lower()):
             return f
     return None
 
-logo_path = encontrar_logo()
+sidebar_logo_path = encontrar_logo_sidebar()
 
-# 1. Configuração Visual da Página (Favicon com a Logo Oficial da Alpha)
+# 1. Configuração Visual da Página (Favicon Personalizado na Aba do Navegador)
 st.set_page_config(
     page_title="Alpha Iron 2.0 - Workout Builder", 
     layout="wide", 
-    page_icon=logo_path if logo_path else "🏋️‍♂️"
+    page_icon=favicon_path if favicon_path else (sidebar_logo_path if sidebar_logo_path else "🏋️‍♂️")
 )
 
 st.markdown("""
@@ -40,11 +65,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DIRETO DA LOGO NA SIDEBAR ---
+# --- CARREGAMENTO DA SEGUNDA IMAGEM NA SIDEBAR ---
 def carregar_logo_sidebar():
-    if logo_path and os.path.exists(logo_path):
+    if sidebar_logo_path and os.path.exists(sidebar_logo_path):
         try:
-            with open(logo_path, "rb") as image_file:
+            with open(sidebar_logo_path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode()
             
             st.sidebar.markdown(
@@ -111,7 +136,7 @@ def obter_metas_volume(bloco_sel, semana_sel):
         "Run": round(base["Run"] * fator, 1)
     }
 
-# --- MOTOR CORRIGIDO DE CÁLCULO DE EMOM VINCULADO AO TEMPO EXATO DO BLOCO ---
+# --- CÁLCULO PRECISO DE EMOM COM REGRA PULL / BMU SEPARADA ---
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
     
@@ -135,7 +160,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                 num_rounds = int(m_rnds.group(1))
                 break
 
-        # Filtra exercícios do bloco
+        # Filtra exercícios válidos
         linhas_ex = []
         for l in linhas:
             l_low = l.lower()
@@ -147,7 +172,6 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
 
         qtd_exercicios = len(linhas_ex) if len(linhas_ex) > 0 else 1
 
-        # CÁLCULO DE MULTIPLICADOR VINCULADO AO TEMPO DO INPUT
         multiplicador = 1
         if is_emom and tempo_minutos > 0:
             multiplicador = max(1, tempo_minutos // qtd_exercicios)
@@ -161,71 +185,81 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
             if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
                 continue
 
-            # LEITURA DE CORRIDA (M / KM)
-            if "run" in linha_limpa or "corrida" in linha_limpa or "km" in linha_limpa:
-                m_metros = re.findall(r'(\d+)\s*m\b', linha_limpa)
+            # Limpa prefixos
+            linha_sem_prefixo = re.sub(r'^(?:min(?:uto)?\s*\d+|st\d+|station\s*\d+|\d+[\.\-\)]\s*)', '', linha_limpa).strip()
+
+            # CORRIDA
+            if "run" in linha_sem_prefixo or "corrida" in linha_sem_prefixo or "km" in linha_sem_prefixo:
+                m_metros = re.findall(r'(\d+)\s*m\b', linha_sem_prefixo)
                 if m_metros:
                     vol["Run"] += (sum([int(m) for m in m_metros]) / 1000.0) * multiplicador
-                m_kms = re.findall(r'(\d+(?:\.\d+)?)\s*km\b', linha_limpa)
+                m_kms = re.findall(r'(\d+(?:\.\d+)?)\s*km\b', linha_sem_prefixo)
                 if m_kms:
                     vol["Run"] += sum([float(k) for k in m_kms]) * multiplicador
 
             reps_base = 0
-            m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_limpa)
+            m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_sem_prefixo)
             if m_mult:
                 for s, r in m_mult:
                     reps_base += int(s) * int(r)
             else:
-                esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_limpa)
+                esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_sem_prefixo)
                 if esquema_hifen:
                     for a, b, c in esquema_hifen:
                         reps_base += int(a) + int(b) + int(c)
                 else:
-                    nums = re.findall(r'\b(\d+)\b', linha_limpa)
+                    nums = re.findall(r'\b(\d+)\b', linha_sem_prefixo)
                     if nums:
                         reps_encontradas = [int(n) for n in nums if int(n) <= 300]
                         if reps_encontradas:
-                            reps_base = sum(reps_encontradas)
+                            reps_base = reps_encontradas[0]
 
             if reps_base == 0:
                 continue
 
-            reps_totais = reps_base * multiplicador
+            # DISTINÇÃO INTELIGENTE DE MOVIMENTOS DE PULL / BMU
+            is_bmu = any(k in linha_sem_prefixo for k in ["bmu", "bar muscle up", "bar muscle-up", "muscle up", "rmu"])
+            
+            if is_bmu:
+                # BMU entra com a contagem exata sem multiplicar rounds desnecessariamente se for baixa repetição
+                reps_totais = reps_base
+            else:
+                reps_totais = reps_base * multiplicador
 
-            # CLASSIFICAÇÃO MULTI-CATEGORIA COMPLETA
+            # CATEGORIZAÇÃO
 
-            if any(k in linha_limpa for k in [
+            if any(k in linha_sem_prefixo for k in [
                 "squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", 
                 "lunge", "lunges", "passada", "pistol", "squat clean", "squat snatch", "front squat", "back squat", "ohs"
             ]):
                 vol["Squat"] += reps_totais
 
-            if any(k in linha_limpa for k in [
+            if any(k in linha_sem_prefixo for k in [
                 "deadlift", "terra", "rdl", "snatch", "clean", "swing", "good morning", "hip thrust"
             ]):
                 vol["Hinge"] += reps_totais
 
-            if any(k in linha_limpa for k in [
+            if any(k in linha_sem_prefixo for k in [
                 "push", "press", "jerk", "thruster", "hspu", "dip", "dips", "bench", "flexao", "flexão", "supino", "wall ball", "wallball"
             ]):
                 vol["Push"] += reps_totais
 
-            if any(k in linha_limpa for k in [
-                "pull", "pullup", "pull-up", "c2b", "chest to bar", "muscle up", "muscle-up", "bmu", "rmu", "row", "remada", "rope climb", "puxada"
+            if is_bmu or any(k in linha_sem_prefixo for k in [
+                "pull", "pullup", "pull-up", "c2b", "chest to bar", "row", "remada", "rope climb", "puxada"
             ]):
                 vol["Pull"] += reps_totais
 
-            if any(k in linha_limpa for k in [
+            if any(k in linha_sem_prefixo for k in [
                 "toes to bar", "ttb", "knees to elbow", "kte", "sit up", "situp", "v-up", "hollow", "plank", "prancha", "l-sit", "abmat", "ghd"
             ]):
                 vol["Core"] += reps_totais
 
-            if any(k in linha_limpa for k in [
+            if any(k in linha_sem_prefixo for k in [
                 "snatch", "arranco", "snatch balance"
             ]):
                 vol["Snatch"] += reps_totais
 
-            if any(k in linha_limpa for k in [
+            if any(k in linha_sem_prefixo for k in [
                 "clean", "jerk", "arremesso", "clean & jerk", "clean and jerk"
             ]):
                 vol["Clean & Jerk"] += reps_totais
@@ -412,10 +446,14 @@ dias_semana = [
     {"day": "Sunday", "focus": "Benchmark / Hero"}
 ]
 
+# CARREGA OS TREINOS DO ARQUIVO PERSISTENTE PARA NÃO ZERAR NUNCA
+treinos_salvos = carregar_treinos_salvos()
+
 # --- CONSTRUÇÃO DAS ABAS DIÁRIAS ---
 tabs = st.tabs([d["day"] for d in dias_semana])
 
 lista_blocos_acumulados = []
+dados_para_salvar = {}
 
 for i, tab in enumerate(tabs):
     day_info = dias_semana[i]
@@ -437,24 +475,24 @@ for i, tab in enumerate(tabs):
                 
                 c_time1, c_text1 = st.columns([1, 3])
                 with c_time1:
-                    t_w = st.number_input("Warm-Up (min)", 1, 60, 10, key=f"t_hy_w_{i}")
+                    t_w = st.number_input("Warm-Up (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_w", 10), key=f"t_hy_w_{i}")
                 with c_text1:
-                    w_input = st.text_area(f"Warm-Up ({t_w}')", "Dynamic Mobility\nCore & Hip Activation\nLight Run", height=90, key=f"hy_w_{i}")
+                    w_input = st.text_area(f"Warm-Up ({t_w}')", treinos_salvos.get(f"{day_name}_w", "Dynamic Mobility\nCore & Hip Activation\nLight Run"), height=90, key=f"hy_w_{i}")
                 
                 s_input = "" 
                 l_input = ""
                 
                 c_time2, c_text2 = st.columns([1, 3])
                 with c_time2:
-                    t_m = st.number_input("Main Block (min)", 1, 60, 40, key=f"t_hy_m_{i}")
+                    t_m = st.number_input("Main Block (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_m", 40), key=f"t_hy_m_{i}")
                 with c_text2:
-                    m_input = st.text_area(f"HYROX Main Block ({t_m}')", "Alternating: Running + Functional Station (Burpee Broad Jump / Carries / Sled / Wall Ball)", height=140, key=f"hy_m_{i}")
+                    m_input = st.text_area(f"HYROX Main Block ({t_m}')", treinos_salvos.get(f"{day_name}_m", "Alternating: Running + Functional Station (Burpee Broad Jump / Carries / Sled / Wall Ball)"), height=140, key=f"hy_m_{i}")
                 
                 c_time3, c_text3 = st.columns([1, 3])
                 with c_time3:
-                    t_r = st.number_input("Mobility (min)", 1, 60, 10, key=f"t_hy_r_{i}")
+                    t_r = st.number_input("Mobility (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_r", 10), key=f"t_hy_r_{i}")
                 with c_text3:
-                    r_input = st.text_area(f"Mobility ({t_r}')", "Light Walk & Guided Breathing / Joint Mobility", height=80, key=f"hy_r_{i}")
+                    r_input = st.text_area(f"Mobility ({t_r}')", treinos_salvos.get(f"{day_name}_r", "Light Walk & Guided Breathing / Joint Mobility"), height=80, key=f"hy_r_{i}")
                 
                 total_time = t_w + t_m + t_r
 
@@ -462,39 +500,45 @@ for i, tab in enumerate(tabs):
                     {"texto": w_input, "tempo": t_w},
                     {"texto": m_input, "tempo": t_m}
                 ])
+                
+                dados_para_salvar.update({
+                    f"{day_name}_t_w": t_w, f"{day_name}_w": w_input,
+                    f"{day_name}_t_m": t_m, f"{day_name}_m": m_input,
+                    f"{day_name}_t_r": t_r, f"{day_name}_r": r_input
+                })
 
             elif day_name == "Friday":
                 st.info("🔥 **ATHX Session:** Fixed Structure (Strength Max + Endurance + MetCon X)")
                 
                 c_time1, c_text1 = st.columns([1, 3])
                 with c_time1:
-                    t_w = st.number_input("Warm-Up (min)", 1, 60, 10, key=f"t_athx_w_{i}")
+                    t_w = st.number_input("Warm-Up (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_w", 10), key=f"t_athx_w_{i}")
                 with c_text1:
-                    w_input = st.text_area(f"Warm-Up ({t_w}')", "Dynamic Activation\nLight Run\nJoint Drills", height=90, key=f"athx_w_{i}")
+                    w_input = st.text_area(f"Warm-Up ({t_w}')", treinos_salvos.get(f"{day_name}_w", "Dynamic Activation\nLight Run\nJoint Drills"), height=90, key=f"athx_w_{i}")
 
                 c_time2, c_text2 = st.columns([1, 3])
                 with c_time2:
-                    t_s = st.number_input("Strength Max (min)", 0, 60, 15, key=f"t_athx_s_{i}")
+                    t_s = st.number_input("Strength Max (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_s", 15), key=f"t_athx_s_{i}")
                 with c_text2:
-                    s_input = st.text_area(f"Strength Max ({t_s}')", "", height=90, key=f"athx_s_{i}")
+                    s_input = st.text_area(f"Strength Max ({t_s}')", treinos_salvos.get(f"{day_name}_s", ""), height=90, key=f"athx_s_{i}")
 
                 c_time3, c_text3 = st.columns([1, 3])
                 with c_time3:
-                    t_e = st.number_input("Endurance (min)", 0, 60, 15, key=f"t_athx_e_{i}")
+                    t_e = st.number_input("Endurance (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_e", 15), key=f"t_athx_e_{i}")
                 with c_text3:
-                    l_input = st.text_area(f"Endurance ({t_e}')", "", height=90, key=f"athx_e_{i}")
+                    l_input = st.text_area(f"Endurance ({t_e}')", treinos_salvos.get(f"{day_name}_e", ""), height=90, key=f"athx_e_{i}")
 
                 c_time4, c_text4 = st.columns([1, 3])
                 with c_time4:
-                    t_m = st.number_input("MetCon X (min)", 1, 60, 15, key=f"t_athx_m_{i}")
+                    t_m = st.number_input("MetCon X (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_m", 15), key=f"t_athx_m_{i}")
                 with c_text4:
-                    m_input = st.text_area(f"MetCon X ({t_m}')", "", height=110, key=f"athx_m_{i}")
+                    m_input = st.text_area(f"MetCon X ({t_m}')", treinos_salvos.get(f"{day_name}_m", ""), height=110, key=f"athx_m_{i}")
 
                 c_time5, c_text5 = st.columns([1, 3])
                 with c_time5:
-                    t_r = st.number_input("Mobility (min)", 0, 60, 5, key=f"t_athx_r_{i}")
+                    t_r = st.number_input("Mobility (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_r", 5), key=f"t_athx_r_{i}")
                 with c_text5:
-                    r_input = st.text_area(f"Mobility ({t_r}')", "Myofascial Release / Stretching", height=80, key=f"athx_r_{i}")
+                    r_input = st.text_area(f"Mobility ({t_r}')", treinos_salvos.get(f"{day_name}_r", "Myofascial Release / Stretching"), height=80, key=f"athx_r_{i}")
 
                 total_time = t_w + t_s + t_e + t_m + t_r
 
@@ -504,43 +548,51 @@ for i, tab in enumerate(tabs):
                     {"texto": l_input, "tempo": t_e},
                     {"texto": m_input, "tempo": t_m}
                 ])
+                
+                dados_para_salvar.update({
+                    f"{day_name}_t_w": t_w, f"{day_name}_w": w_input,
+                    f"{day_name}_t_s": t_s, f"{day_name}_s": s_input,
+                    f"{day_name}_t_e": t_e, f"{day_name}_e": l_input,
+                    f"{day_name}_t_m": t_m, f"{day_name}_m": m_input,
+                    f"{day_name}_t_r": t_r, f"{day_name}_r": r_input
+                })
 
             else:
                 c_time1, c_text1 = st.columns([1, 3])
                 with c_time1:
-                    t_w = st.number_input("Warm-Up (min)", 1, 60, 10, key=f"t_cf_w_{i}")
+                    t_w = st.number_input("Warm-Up (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_w", 10), key=f"t_cf_w_{i}")
                 with c_text1:
-                    w_input = st.text_area(f"1. Warm-Up ({t_w}')", "2-3 Rounds:\n50 Jumping Jacks\n10 Shuttle Runs\nDynamic Drills", height=100, key=f"cf_w_{i}")
+                    w_input = st.text_area(f"1. Warm-Up ({t_w}')", treinos_salvos.get(f"{day_name}_w", "2-3 Rounds:\n50 Jumping Jacks\n10 Shuttle Runs\nDynamic Drills"), height=100, key=f"cf_w_{i}")
 
                 c_time2, c_text2 = st.columns([1, 3])
                 with c_time2:
-                    t_s = st.number_input("Strength (min)", 0, 60, 15, key=f"t_cf_s_{i}")
+                    t_s = st.number_input("Strength (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_s", 15), key=f"t_cf_s_{i}")
                 with c_text2:
-                    s_input = st.text_area(f"2. Strength ({t_s}')", "", height=90, key=f"cf_s_{i}")
+                    s_input = st.text_area(f"2. Strength ({t_s}')", treinos_salvos.get(f"{day_name}_s", ""), height=90, key=f"cf_s_{i}")
 
                 c_time3, c_text3 = st.columns([1, 3])
                 with c_time3:
-                    t_l = st.number_input("Skill (min)", 0, 60, 10, key=f"t_cf_l_{i}")
+                    t_l = st.number_input("Skill (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_l", 10), key=f"t_cf_l_{i}")
                 with c_text3:
-                    l_input = st.text_area(f"3. Skill ({t_l}')", "", height=120, key=f"cf_l_{i}")
+                    l_input = st.text_area(f"3. Skill ({t_l}')", treinos_salvos.get(f"{day_name}_l", ""), height=120, key=f"cf_l_{i}")
 
                 c_time4, c_text4 = st.columns([1, 3])
                 with c_time4:
-                    t_m = st.number_input("WOD (min)", 1, 60, 15, key=f"t_cf_m_{i}")
+                    t_m = st.number_input("WOD (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_m", 15), key=f"t_cf_m_{i}")
                 with c_text4:
-                    m_input = st.text_area(f"4. WOD ({t_m}')", "", height=140, key=f"cf_wod_{i}")
+                    m_input = st.text_area(f"4. WOD ({t_m}')", treinos_salvos.get(f"{day_name}_m", ""), height=140, key=f"cf_wod_{i}")
 
                 c_time5, c_text5 = st.columns([1, 3])
                 with c_time5:
-                    t_a = st.number_input("Accessory (min)", 0, 60, 5, key=f"t_cf_a_{i}")
+                    t_a = st.number_input("Accessory (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_a", 5), key=f"t_cf_a_{i}")
                 with c_text5:
-                    a_input = st.text_area(f"5. Accessory ({t_a}')", "Unilateral accessories / core stabilization", height=80, key=f"cf_a_{i}")
+                    a_input = st.text_area(f"5. Accessory ({t_a}')", treinos_salvos.get(f"{day_name}_a", "Unilateral accessories / core stabilization"), height=80, key=f"cf_a_{i}")
 
                 c_time6, c_text6 = st.columns([1, 3])
                 with c_time6:
-                    t_r = st.number_input("Mobility (min)", 0, 60, 5, key=f"t_cf_r_{i}")
+                    t_r = st.number_input("Mobility (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_r", 5), key=f"t_cf_r_{i}")
                 with c_text6:
-                    r_input = st.text_area(f"6. Mobility ({t_r}')", "Targeted joint mobility", height=80, key=f"cf_m_{i}")
+                    r_input = st.text_area(f"6. Mobility ({t_r}')", treinos_salvos.get(f"{day_name}_r", "Targeted joint mobility"), height=80, key=f"cf_m_{i}")
 
                 total_time = t_w + t_s + t_l + t_m + t_a + t_r
 
@@ -551,6 +603,15 @@ for i, tab in enumerate(tabs):
                     {"texto": m_input, "tempo": t_m},
                     {"texto": a_input, "tempo": t_a}
                 ])
+                
+                dados_para_salvar.update({
+                    f"{day_name}_t_w": t_w, f"{day_name}_w": w_input,
+                    f"{day_name}_t_s": t_s, f"{day_name}_s": s_input,
+                    f"{day_name}_t_l": t_l, f"{day_name}_l": l_input,
+                    f"{day_name}_t_m": t_m, f"{day_name}_m": m_input,
+                    f"{day_name}_t_a": t_a, f"{day_name}_a": a_input,
+                    f"{day_name}_t_r": t_r, f"{day_name}_r": r_input
+                })
 
             if total_time > 60:
                 st.warning(f"⚠️ **Session Time Alert:** Total duration is **{total_time} min** (Standard limit: 60 min).")
@@ -594,10 +655,13 @@ for i, tab in enumerate(tabs):
             st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
             st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
 
-# PROCESSA O VOLUME EXATAMENTE CONECTADO COM O TEMPO DIGITADO EM CADA BLOCO
+# SALVA EM SEGUNDO PLANO AUTOMATICAMENTE PARA OUTROS COMPUTADORES / CELULAR
+salvar_treinos_disco(dados_para_salvar)
+
+# RECALCULA O VOLUME DA SEMANA INTEGRANDO A REGRA DE PULL E BMU
 vol_usado = extrair_volume_acumulado_estruturado(lista_blocos_acumulados)
 
-# TABELA LATERAL COM O VOLUME RECALCULADO CORRETAMENTE
+# TABELA LATERAL COM O VOLUME RECALCULADO PERFEITAMENTE
 tabela_volume = pd.DataFrame({
     "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
     "Target": [
