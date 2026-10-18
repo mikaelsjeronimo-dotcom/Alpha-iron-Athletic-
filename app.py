@@ -178,17 +178,17 @@ def carregar_logo_sidebar():
 carregar_logo_sidebar()
 
 # --- MENU LATERAL DE NAVEGAÇÃO PROFISSIONAL ---
-st.sidebar.markdown("### 🧭 Menu Principal")
+st.sidebar.markdown("###  Menu Principal")
 menu_opcao = st.sidebar.radio(
     "Navegação",
     [
-        "🏠 Início (Dashboard)",
-        "📅 Programação Semanal",
-        "⚙️ Montagem de Treinos",
-        "🔥 Biblioteca de WODs",
-        "🏋️‍♂️ Biblioteca de Exercícios",
-        "💾 Treinos Salvos",
-        "⚙️ Configurações"
+        " Início (Dashboard)",
+        " Programação Semanal",
+        " Montagem de Treinos",
+        " Biblioteca de WODs",
+        " Biblioteca de Exercícios",
+        " Treinos Salvos",
+        " Configurações"
     ],
     label_visibility="collapsed"
 )
@@ -196,7 +196,7 @@ menu_opcao = st.sidebar.radio(
 st.sidebar.markdown("---")
 
 # --- BARRA LATERAL: PERIODIZAÇÃO ---
-st.sidebar.header("⚙️ Periodização (Planilha 2.0)")
+st.sidebar.header(" Periodização (Planilha 2.0)")
 bloco = st.sidebar.selectbox("Periodization Phase", [
     "Block 1 - Strength Focus",
     "Block 2 - Engine Focus",
