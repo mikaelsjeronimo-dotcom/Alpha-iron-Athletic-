@@ -53,7 +53,7 @@ st.markdown("""
 
     /* Títulos e Cabeçalhos com o Vermelho Alpha Iron */
     h1, h2, h3, h4 {
-        color: #ff3333 !important;
+        color: #00E5FF !important;
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
         letter-spacing: -0.5px;
