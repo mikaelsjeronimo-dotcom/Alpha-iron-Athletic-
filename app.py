@@ -1,4 +1,4 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
 import os
 import glob
@@ -31,54 +31,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- ESTILIZAÇÃO VISUAL (DARK MODE LIMPO E PROFISSIONAL) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
-
-    .main {
-        background-color: #0b0e14;
-        color: #e2e8f0;
-    }
-
-    section[data-testid="stSidebar"] {
-        background-color: #111827;
-        border-right: 1px solid #1f2937;
-    }
-
-    h1, h2, h3 {
-        color: #f8fafc !important;
-        font-weight: 700;
-    }
-    
-    h1 {
-        font-size: 1.8rem !important;
-        border-bottom: 2px solid #dc2626;
-        padding-bottom: 8px;
-        margin-bottom: 20px;
-    }
-
-    .stMetric {
-        background-color: #161e2e;
-        border: 1px solid #1f2937;
-        padding: 14px;
-        border-radius: 12px;
-    }
-
-    .stButton>button {
-        background-color: #dc2626;
-        color: white;
-        border-radius: 8px;
-        font-weight: 600;
-        border: none;
-    }
-    .stButton>button:hover {
-        background-color: #b91c1c;
-    }
+    .main { background-color: #121212; color: #E0E0E0; }
+    .stMetric { background-color: #1E1E1E; padding: 10px; border-radius: 8px; }
+    h1, h2, h3 { color: #D32F2F; font-family: 'Roboto', sans-serif; }
+    .stTable { font-size: 13px; }
+    input[type=number] { text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -189,4 +148,381 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                 break
 
         linhas_ex = []
-        for l in
+        for l in linhas:
+            l_low = l.lower()
+            if any(k in l_low for k in ["rx:", "scaled:", "emom", "amrap", "for time", "cap "]):
+                continue
+            if " or " in l_low:
+                l = l_low.split(" or ")[0]
+            linhas_ex.append(l)
+
+        qtd_exercicios = len(linhas_ex) if len(linhas_ex) > 0 else 1
+        multiplicador = 1
+        if is_emom and tempo_minutos > 0:
+            multiplicador = max(1, tempo_minutos // qtd_exercicios)
+        elif is_amrap and tempo_minutos > 0:
+            multiplicador = max(1, tempo_minutos // 3)
+        elif num_rounds > 1:
+            multiplicador = num_rounds
+
+        for linha in linhas_ex:
+            linha_limpa = linha.lower().strip()
+            if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
+                continue
+
+            linha_sem_prefixo = re.sub(r'^(?:min(?:uto)?\s*\d+|st\d+|station\s*\d+|\d+[\.\-\)]\s*)', '', linha_limpa).strip()
+
+            if "run" in linha_sem_prefixo or "corrida" in linha_sem_prefixo or "km" in linha_sem_prefixo:
+                m_metros = re.findall(r'(\d+)\s*m\b', linha_sem_prefixo)
+                if m_metros:
+                    vol["Run"] += (sum([int(m) for m in m_metros]) / 1000.0) * multiplicador
+                m_kms = re.findall(r'(\d+(?:\.\d+)?)\s*km\b', linha_sem_prefixo)
+                if m_kms:
+                    vol["Run"] += sum([float(k) for k in m_kms]) * multiplicador
+
+            reps_base = 0
+            m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_sem_prefixo)
+            if m_mult:
+                for s, r in m_mult:
+                    reps_base += int(s) * int(r)
+            else:
+                esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_sem_prefixo)
+                if esquema_hifen:
+                    for a, b, c in esquema_hifen:
+                        reps_base += int(a) + int(b) + int(c)
+                else:
+                    nums = re.findall(r'\b(\d+)\b', linha_sem_prefixo)
+                    if nums:
+                        reps_encontradas = [int(n) for n in nums if int(n) <= 300]
+                        if reps_encontradas:
+                            reps_base = reps_encontradas[0]
+
+            if reps_base == 0:
+                continue
+
+            is_bmu = any(k in linha_sem_prefixo for k in ["bmu", "bar muscle up", "bar muscle-up", "muscle up", "rmu"])
+            reps_totais = reps_base if is_bmu else reps_base * multiplicador
+
+            if any(k in linha_sem_prefixo for k in ["squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", "lunge", "lunges", "passada", "pistol", "squat clean", "squat snatch", "front squat", "back squat", "ohs"]):
+                vol["Squat"] += reps_totais
+            if any(k in linha_sem_prefixo for k in ["deadlift", "terra", "rdl", "snatch", "clean", "swing", "good morning", "hip thrust"]):
+                vol["Hinge"] += reps_totais
+            if any(k in linha_sem_prefixo for k in ["push", "press", "jerk", "thruster", "hspu", "dip", "dips", "bench", "flexao", "flexão", "supino", "wall ball", "wallball"]):
+                vol["Push"] += reps_totais
+            if is_bmu or any(k in linha_sem_prefixo for k in ["pull", "pullup", "pull-up", "c2b", "chest to bar", "row", "remada", "rope climb", "puxada"]):
+                vol["Pull"] += reps_totais
+            if any(k in linha_sem_prefixo for k in ["toes to bar", "ttb", "knees to elbow", "kte", "sit up", "situp", "v-up", "hollow", "plank", "prancha", "l-sit", "abmat", "ghd"]):
+                vol["Core"] += reps_totais
+            if any(k in linha_sem_prefixo for k in ["snatch", "arranco", "snatch balance"]):
+                vol["Snatch"] += reps_totais
+            if any(k in linha_sem_prefixo for k in ["clean", "jerk", "arremesso", "clean & jerk", "clean and jerk"]):
+                vol["Clean & Jerk"] += reps_totais
+
+    return vol
+
+def calcular_iacs_de_vol(vol_dict, eh_especial=False):
+    score = (
+        (vol_dict["Squat"] * 0.12) + (vol_dict["Hinge"] * 0.15) + 
+        (vol_dict["Push"] * 0.12) + (vol_dict["Pull"] * 0.12) + 
+        (vol_dict["Core"] * 0.08) + (vol_dict["Snatch"] * 0.2) + 
+        (vol_dict["Clean & Jerk"] * 0.2) + (vol_dict["Run"] * 3)
+    )
+    if eh_especial:
+        score += 15
+    return int(score)
+
+METODOLOGIA_BASE = {
+    "Block 1": {
+        "Week 1": {"strength": "Back Squat 4x8 @ 65-70% RPE 7", "skill": "Hang High Snatch 5x3", "wod": "AMRAP 12 min:\n- 12 DB Goblet Squats\n- 10 Ring Rows\n- 8 Push-ups"},
+        "Week 2": {"strength": "Back Squat 5x5 @ 75-80% RPE 8", "skill": "Hang Power Snatch 5x2", "wod": "For Time (Cap 15 min):\n- 15-12-9 Barbell Squats + Toes to Bar"},
+        "Week 3": {"strength": "Back Squat 5x3 @ 85% RPE 9", "skill": "Squat Snatch 6x1", "wod": "4 Rounds For Time:\n- 400m Run\n- 10 Wall Balls\n- 5 Heavy Power Cleans"},
+        "Week 4": {"strength": "3RM Back Squat Test", "skill": "Benchmark Isabel", "wod": "Benchmark Fran"}
+    },
+    "Block 2": {
+        "Week 1": {"strength": "Deadlift 4x8 @ 65%", "skill": "DB High Pull 4x10", "wod": "EMOM 20 min:\n- Min 1: 15 Cal Row\n- Min 2: 12 Burpees"},
+        "Week 2": {"strength": "Deadlift 5x5 @ 75%", "skill": "Hang Clean 5x3", "wod": "Chipper For Time:\n- 800m Run\n- 40 Box Jumps"},
+        "Week 3": {"strength": "Deadlift 5x3 @ 85%", "skill": "Power Clean 5x2", "wod": "5 Sets:\n- 200m Run\n- Max Burpee Box Jumps"},
+        "Week 4": {"strength": "Active Deload", "skill": "Mobility", "wod": "Benchmark Helen"}
+    },
+    "Block 3": {
+        "Week 1": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:\n- 10 Pull-ups\n- 15 Push-ups"},
+        "Week 2": {"strength": "Strict Press 5x5", "skill": "Snatch Balance 5x3", "wod": "EMOM 16 min:\n- 8 Chest to Bar\n- 10 HSPU"},
+        "Week 3": {"strength": "Strict Press 5x3", "skill": "Squat Snatch 5x2", "wod": "For Time:\n- 21-15-9 Bar Muscle-ups"},
+        "Week 4": {"strength": "Max Pull-ups Test", "skill": "Mobility", "wod": "Benchmark Cindy"}
+    },
+    "Block 4": {
+        "Week 1": {"strength": "Front Squat 4x6", "skill": "Snatch Complex", "wod": "AMRAP 10 min:\n- 6 Power Cleans"},
+        "Week 2": {"strength": "Front Squat 5x4", "skill": "Clean Complex", "wod": "For Time:\n- 15-12-9 Clean & Jerks"},
+        "Week 3": {"strength": "Front Squat 5x2", "skill": "C&J Single", "wod": "Benchmark Grace"},
+        "Week 4": {"strength": "1RM Front Squat", "skill": "Assessment", "wod": "Benchmark DT"}
+    }
+}
+
+def gerar_todas_sugestoes(bloco_sel, semana_sel, strength_txt, skill_txt, wod_txt):
+    key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1]
+    key_week = semana_sel.split(" ")[0] + " " + semana_sel.split(" ")[1]
+    base_bloco = METODOLOGIA_BASE.get(key_block, {}).get(key_week, {"strength": "Strength", "skill": "Skill", "wod": "WOD"})
+    
+    s_usada = strength_txt if len(strength_txt.strip()) > 5 else base_bloco["strength"]
+    l_usada = skill_txt if len(skill_txt.strip()) > 5 else base_bloco["skill"]
+    m_usada = wod_txt if len(wod_txt.strip()) > 5 else base_bloco["wod"]
+    
+    df_sug = pd.DataFrame({
+        "Session Block": ["1. Warm-Up", "2. Strength", "3. Skill", "4. WOD", "5. Accessory", "6. Mobility"],
+        "Recommended Programming": ["2-3 Rounds: Air Squats", base_bloco["strength"], base_bloco["skill"], base_bloco["wod"], "Core Accessory", "Mobility"]
+    })
+    return df_sug
+
+# --- BARRA LATERAL: PERIODIZAÇÃO ---
+st.sidebar.header("⚙️ Periodization (Planilha 2.0)")
+bloco = st.sidebar.selectbox("Periodization Phase", [
+    "Block 1 - Strength Focus",
+    "Block 2 - Engine Focus",
+    "Block 3 - Gymnastics Focus",
+    "Block 4 - Weightlifting Focus"
+])
+
+semana = st.sidebar.selectbox("Periodization Week", [
+    "Week 1 - Accumulation",
+    "Week 2 - Progression",
+    "Week 3 - Overload",
+    "Week 4 - Deload / Benchmark"
+])
+
+metas = obter_metas_volume(bloco, semana)
+
+st.sidebar.markdown("---")
+st.sidebar.header("📊 MCVS & Weekly Volume Control")
+
+dias_semana = [
+    {"day": "Monday", "focus": "HYROX"},
+    {"day": "Tuesday", "focus": "CrossFit - Strength / LPO"},
+    {"day": "Wednesday", "focus": "CrossFit - Gymnastics"},
+    {"day": "Thursday", "focus": "CrossFit - Strength / LPO"},
+    {"day": "Friday", "focus": "ATHX"},
+    {"day": "Saturday", "focus": "Community WOD"},
+    {"day": "Sunday", "focus": "Benchmark / Hero"}
+]
+
+treinos_salvos = carregar_treinos_salvos()
+tabs = st.tabs([d["day"] for d in dias_semana])
+
+lista_blocos_semana_acumulados = []
+dados_para_salvar = {}
+
+for i, tab in enumerate(tabs):
+    day_info = dias_semana[i]
+    day_name = day_info["day"]
+    
+    with tab:
+        st.subheader(f"{day_name} — {day_info['focus']}")
+        
+        col1, col2 = st.columns([1.3, 1])
+        lista_blocos_do_dia = []
+        
+        with col1:
+            st.markdown("### 📋 Session Structure (60 min)")
+            t_s, t_m = 0, 0
+            
+            if day_name == "Monday":
+                st.info("🏃 **HYROX Session:** Running + Functional Stations")
+                c1, c2 = st.columns([1, 4])
+                with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_hy_w_{i}")
+                with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic Mobility"), height=75, key=f"hy_w_{i}")
+                
+                s_input, l_input = "", ""
+                c3, c4 = st.columns([1, 4])
+                with c3: t_m = st.text_input("Main (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "40")), key=f"t_hy_m_{i}")
+                with c4: m_input = st.text_area("HYROX Main Block", treinos_salvos.get(f"{day_name}_m", "Running + Stations"), height=110, key=f"hy_m_{i}")
+                
+                c5, c6 = st.columns([1, 4])
+                with c5: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "10")), key=f"t_hy_r_{i}")
+                with c6: r_input = st.text_area("Mobility Descrição", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=75, key=f"hy_r_{i}")
+                
+                tw_val = int(t_w) if t_w.isdigit() else 0
+                tm_val = int(t_m) if t_m.isdigit() else 0
+                tr_val = int(t_r) if t_r.isdigit() else 0
+                total_time = tw_val + tm_val + tr_val
+
+                lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": m_input, "tempo": tm_val}]
+                dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
+
+            elif day_name == "Friday":
+                st.info("🔥 **ATHX Session:** Fixed Structure")
+                c1, c2 = st.columns([1, 4])
+                with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_athx_w_{i}")
+                with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic"), height=75, key=f"athx_w_{i}")
+
+                c3, c4 = st.columns([1, 4])
+                with c3: t_s = st.text_input("Str (min)", value=str(treinos_salvos.get(f"{day_name}_t_s", "15")), key=f"t_athx_s_{i}")
+                with c4: s_input = st.text_area("Strength Max Descrição", treinos_salvos.get(f"{day_name}_s", ""), height=75, key=f"athx_s_{i}")
+
+                c5, c6 = st.columns([1, 4])
+                with c5: t_e = st.text_input("End (min)", value=str(treinos_salvos.get(f"{day_name}_t_e", "15")), key=f"t_athx_e_{i}")
+                with c6: l_input = st.text_area("Endurance Descrição", treinos_salvos.get(f"{day_name}_e", ""), height=75, key=f"athx_e_{i}")
+
+                c7, c8 = st.columns([1, 4])
+                with c7: t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_athx_m_{i}")
+                with c8: m_input = st.text_area("MetCon X Descrição", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"athx_m_{i}")
+
+                c9, c10 = st.columns([1, 4])
+                with c9: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "5")), key=f"t_athx_r_{i}")
+                with c10: r_input = st.text_area("Mobility Descrição", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=75, key=f"athx_r_{i}")
+
+                tw_val = int(t_w) if t_w.isdigit() else 0
+                ts_val = int(t_s) if t_s.isdigit() else 0
+                te_val = int(t_e) if t_e.isdigit() else 0
+                tm_val = int(t_m) if t_m.isdigit() else 0
+                tr_val = int(t_r) if t_r.isdigit() else 0
+                total_time = tw_val + ts_val + te_val + tm_val + tr_val
+
+                lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": s_input, "tempo": ts_val}, {"texto": l_input, "tempo": te_val}, {"texto": m_input, "tempo": tm_val}]
+                dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input, f"{day_name}_t_e": te_val, f"{day_name}_e": l_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
+
+            else:
+                c1, c2 = st.columns([1, 4])
+                with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_cf_w_{i}")
+                with c2: w_input = st.text_area("1. Warm-Up", treinos_salvos.get(f"{day_name}_w", ""), height=75, key=f"cf_w_{i}")
+
+                c3, c4 = st.columns([1, 4])
+                with c3: t_s = st.text_input("Str (min)", value=str(treinos_salvos.get(f"{day_name}_t_s", "15")), key=f"t_cf_s_{i}")
+                with c4: s_input = st.text_area("2. Strength", treinos_salvos.get(f"{day_name}_s", ""), height=75, key=f"cf_s_{i}")
+
+                c5, c6 = st.columns([1, 4])
+                with c5: t_l = st.text_input("Skill (min)", value=str(treinos_salvos.get(f"{day_name}_t_l", "10")), key=f"t_cf_l_{i}")
+                with c6: l_input = st.text_area("3. Skill", treinos_salvos.get(f"{day_name}_l", ""), height=75, key=f"cf_l_{i}")
+
+                c7, c8 = st.columns([1, 4])
+                with c7: t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_cf_m_{i}")
+                with c8: m_input = st.text_area("4. WOD", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"cf_wod_{i}")
+
+                c9, c10 = st.columns([1, 4])
+                with c9: t_a = st.text_input("Acc (min)", value=str(treinos_salvos.get(f"{day_name}_t_a", "5")), key=f"t_cf_a_{i}")
+                with c10: a_input = st.text_area("5. Accessory", treinos_salvos.get(f"{day_name}_a", ""), height=75, key=f"cf_a_{i}")
+
+                c11, c12 = st.columns([1, 4])
+                with c11: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "5")), key=f"t_cf_r_{i}")
+                with c12: r_input = st.text_area("6. Mobility", treinos_salvos.get(f"{day_name}_r", ""), height=75, key=f"cf_m_{i}")
+
+                tw_val = int(t_w) if t_w.isdigit() else 0
+                ts_val = int(t_s) if t_s.isdigit() else 0
+                tl_val = int(t_l) if t_l.isdigit() else 0
+                tm_val = int(t_m) if t_m.isdigit() else 0
+                ta_val = int(t_a) if t_a.isdigit() else 0
+                tr_val = int(t_r) if t_r.isdigit() else 0
+                
+                total_time = tw_val + ts_val + tl_val + tm_val + ta_val + tr_val
+
+                lista_blocos_do_dia = [
+                    {"texto": w_input, "tempo": tw_val}, {"texto": s_input, "tempo": ts_val},
+                    {"texto": l_input, "tempo": tl_val}, {"texto": m_input, "tempo": tm_val},
+                    {"texto": a_input, "tempo": ta_val}
+                ]
+                
+                dados_para_salvar.update({
+                    f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input,
+                    f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input,
+                    f"{day_name}_t_l": tl_val, f"{day_name}_l": l_input,
+                    f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input,
+                    f"{day_name}_t_a": ta_val, f"{day_name}_a": a_input,
+                    f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input
+                })
+
+            lista_blocos_semana_acumulados.extend(lista_blocos_do_dia)
+
+            # --- CÁLCULO DO IACS DIÁRIO ---
+            vol_dia = extrair_volume_acumulado_estruturado(lista_blocos_do_dia)
+            eh_especial = ("HYROX" in day_info["focus"] or "ATHX" in day_info["focus"])
+            iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
+
+            st.markdown("---")
+            col_metric1, col_metric2 = st.columns(2)
+            
+            with col_metric1:
+                if total_time > 60:
+                    st.warning(f"⚠️ **Duration:** {total_time} min / 60 min")
+                else:
+                    st.success(f"⏱️ **Duration:** {total_time} min / 60 min")
+
+            with col_metric2:
+                if iacs_dia <= 10:
+                    st.info(f"🟢 **Daily Alpha Load (IACS):** {iacs_dia} pts (Recovery)")
+                elif iacs_dia <= 20:
+                    st.success(f"🟡 **Daily Alpha Load (IACS):** {iacs_dia} pts (Moderate)")
+                elif iacs_dia <= 32:
+                    st.warning(f"🟠 **Daily Alpha Load (IACS):** {iacs_dia} pts (High Intensity)")
+                else:
+                    st.error(f"🔴 **Daily Alpha Load (IACS):** {iacs_dia} pts (Shock Session)")
+
+        with col2:
+            st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
+            escala_df = pd.DataFrame({
+                "Level": ["RX", "Intermediate", "Beginner", "Masters"],
+                "Load / Category": ["100% RX Load", "70-80% Load", "50% Load / Dumbbells", "Custom Scaling"],
+                "Gymnastics": ["Full Movement", "Medium Progression", "Basic Scale", "Range Focus"]
+            })
+            st.table(escala_df)
+            
+            st.markdown("### 💡 Intelligence Suggestions")
+            s_val = s_input if 's_input' in locals() else ""
+            l_val = l_input if 'l_input' in locals() else ""
+            m_val = m_input if 'm_input' in locals() else ""
+            
+            df_todas_sugestoes = gerar_todas_sugestoes(bloco, semana, s_val, l_val, m_val)
+            st.table(df_todas_sugestoes)
+            
+            st.markdown("---")
+            st.markdown("### 🔍 Validation Checklist")
+            st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
+            st.checkbox("Dominant movement pattern respected?", value=True, key=f"chk2_{i}")
+            st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
+            st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
+
+salvar_treinos_disco(dados_para_salvar)
+
+# --- CÁLCULO SEMANAL ---
+vol_usado_semana = extrair_volume_acumulado_estruturado(lista_blocos_semana_acumulados)
+
+tabela_volume = pd.DataFrame({
+    "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
+    "Target": [
+        f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", 
+        f"{int(metas['Pull'])}", f"{int(metas['Core'])}", f"{int(metas['Snatch'])}", 
+        f"{int(metas['Clean & Jerk'])}", f"{metas['Run']} km"
+    ],
+    "Used": [
+        f"{int(vol_usado_semana['Squat'])}", f"{int(vol_usado_semana['Hinge'])}", f"{int(vol_usado_semana['Push'])}", 
+        f"{int(vol_usado_semana['Pull'])}", f"{int(vol_usado_semana['Core'])}", f"{int(vol_usado_semana['Snatch'])}", 
+        f"{int(vol_usado_semana['Clean & Jerk'])}", f"{round(vol_usado_semana['Run'], 2)} km"
+    ],
+    "Balance": [
+        f"{int(metas['Squat'] - vol_usado_semana['Squat'])}",
+        f"{int(metas['Hinge'] - vol_usado_semana['Hinge'])}",
+        f"{int(metas['Push'] - vol_usado_semana['Push'])}",
+        f"{int(metas['Pull'] - vol_usado_semana['Pull'])}",
+        f"{int(metas['Core'] - vol_usado_semana['Core'])}",
+        f"{int(metas['Snatch'] - vol_usado_semana['Snatch'])}",
+        f"{int(metas['Clean & Jerk'] - vol_usado_semana['Clean & Jerk'])}",
+        f"{round(metas['Run'] - vol_usado_semana['Run'], 2)} km"
+    ]
+})
+
+st.sidebar.table(tabela_volume)
+
+iacs_semanal_total = calcular_iacs_de_vol(vol_usado_semana)
+st.sidebar.metric("Weekly Alpha Load (Total IACS)", f"{int(iacs_semanal_total)} pts")
+
+if iacs_semanal_total <= 45:
+    st.sidebar.success("Classification: Light Week")
+elif iacs_semanal_total <= 60:
+    st.sidebar.info("Classification: Moderate Week")
+elif iacs_semanal_total <= 75:
+    st.sidebar.warning("Classification: Heavy Week")
+elif iacs_semanal_total <= 90:
+    st.sidebar.error("Classification: Shock Week")
+else:
+    st.sidebar.error("⚠️ Not Recommended for Regular Classes")
+
+st.markdown("---")
+if st.button("💾 Save & Export Weekly Programming"):
+    st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
