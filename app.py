@@ -34,16 +34,24 @@ st.set_page_config(
 # --- DESIGN SYSTEM / CSS CUSTOMIZADO (ALPHA IRON ATHLETICS) ---
 st.markdown("""
     <style>
+    /* Remove a barra/cabeçalho branco padrão do Streamlit no topo */
+    [data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+    }
+
+    /* Fundo principal da aplicação */
     .stApp {
         background-color: #0e1117;
         color: #f0f2f6;
     }
     
+    /* Barra lateral */
     [data-testid="stSidebar"] {
         background-color: #121418;
         border-right: 1px solid #22262d;
     }
 
+    /* Títulos e Cabeçalhos com o Vermelho Alpha Iron */
     h1, h2, h3, h4 {
         color: #ff3333 !important;
         font-family: 'Helvetica Neue', sans-serif;
@@ -51,6 +59,7 @@ st.markdown("""
         letter-spacing: -0.5px;
     }
 
+    /* Estilização das abas */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #121418;
@@ -73,6 +82,7 @@ st.markdown("""
         color: #ffffff !important;
     }
 
+    /* Inputs de texto e áreas de texto */
     .stTextInput input, .stTextArea textarea {
         background-color: #161920 !important;
         color: #ffffff !important;
@@ -85,6 +95,7 @@ st.markdown("""
         box-shadow: 0 0 5px rgba(255, 51, 51, 0.3) !important;
     }
 
+    /* Métricas */
     [data-testid="stMetricValue"] {
         color: #ffffff !important;
         font-size: 24px !important;
@@ -94,6 +105,7 @@ st.markdown("""
         color: #9ca3af !important;
     }
 
+    /* Tabelas */
     table {
         background-color: #161920 !important;
         border-radius: 8px;
@@ -105,6 +117,7 @@ st.markdown("""
         color: #ff3333 !important;
     }
 
+    /* Botões personalizados */
     .stButton button {
         background: linear-gradient(135deg, #cc0000 0%, #ff3333 100%);
         color: white;
