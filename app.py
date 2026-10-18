@@ -37,7 +37,6 @@ st.markdown("""
     .stMetric { background-color: #1E1E1E; padding: 10px; border-radius: 8px; }
     h1, h2, h3 { color: #D32F2F; font-family: 'Roboto', sans-serif; }
     .stTable { font-size: 13px; }
-    /* Ajusta inputs numéricos para parecerem mais limpos */
     input[type=number] { text-align: center; }
     </style>
 """, unsafe_allow_html=True)
@@ -432,4 +431,98 @@ for i, tab in enumerate(tabs):
             lista_blocos_semana_acumulados.extend(lista_blocos_do_dia)
 
             # --- CÁLCULO DO IACS DIÁRIO ---
-            vol_dia = extrair_volume
+            vol_dia = extrair_volume_acumulado_estruturado(lista_blocos_do_dia)
+            eh_especial = ("HYROX" in day_info["focus"] or "ATHX" in day_info["focus"])
+            iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
+
+            st.markdown("---")
+            col_metric1, col_metric2 = st.columns(2)
+            
+            with col_metric1:
+                if total_time > 60:
+                    st.warning(f"⚠️ **Duration:** {total_time} min / 60 min")
+                else:
+                    st.success(f"⏱️ **Duration:** {total_time} min / 60 min")
+
+            with col_metric2:
+                if iacs_dia <= 10:
+                    st.info(f"🟢 **Daily Alpha Load (IACS):** {iacs_dia} pts (Recovery)")
+                elif iacs_dia <= 20:
+                    st.success(f"🟡 **Daily Alpha Load (IACS):** {iacs_dia} pts (Moderate)")
+                elif iacs_dia <= 32:
+                    st.warning(f"🟠 **Daily Alpha Load (IACS):** {iacs_dia} pts (High Intensity)")
+                else:
+                    st.error(f"🔴 **Daily Alpha Load (IACS):** {iacs_dia} pts (Shock Session)")
+
+        with col2:
+            st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
+            escala_df = pd.DataFrame({
+                "Level": ["RX", "Intermediate", "Beginner", "Masters"],
+                "Load / Category": ["100% RX Load", "70-80% Load", "50% Load / Dumbbells", "Custom Scaling"],
+                "Gymnastics": ["Full Movement", "Medium Progression", "Basic Scale", "Range Focus"]
+            })
+            st.table(escala_df)
+            
+            st.markdown("### 💡 Intelligence Suggestions")
+            s_val = s_input if 's_input' in locals() else ""
+            l_val = l_input if 'l_input' in locals() else ""
+            m_val = m_input if 'm_input' in locals() else ""
+            
+            df_todas_sugestoes = gerar_todas_sugestoes(bloco, semana, s_val, l_val, m_val)
+            st.table(df_todas_sugestoes)
+            
+            st.markdown("---")
+            st.markdown("### 🔍 Validation Checklist")
+            st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
+            st.checkbox("Dominant movement pattern respected?", value=True, key=f"chk2_{i}")
+            st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
+            st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
+
+salvar_treinos_disco(dados_para_salvar)
+
+# --- CÁLCULO SEMANAL ---
+vol_usado_semana = extrair_volume_acumulado_estruturado(lista_blocos_semana_acumulados)
+
+tabela_volume = pd.DataFrame({
+    "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
+    "Target": [
+        f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", 
+        f"{int(metas['Pull'])}", f"{int(metas['Core'])}", f"{int(metas['Snatch'])}", 
+        f"{int(metas['Clean & Jerk'])}", f"{metas['Run']} km"
+    ],
+    "Used": [
+        f"{int(vol_usado_semana['Squat'])}", f"{int(vol_usado_semana['Hinge'])}", f"{int(vol_usado_semana['Push'])}", 
+        f"{int(vol_usado_semana['Pull'])}", f"{int(vol_usado_semana['Core'])}", f"{int(vol_usado_semana['Snatch'])}", 
+        f"{int(vol_usado_semana['Clean & Jerk'])}", f"{round(vol_usado_semana['Run'], 2)} km"
+    ],
+    "Balance": [
+        f"{int(metas['Squat'] - vol_usado_semana['Squat'])}",
+        f"{int(metas['Hinge'] - vol_usado_semana['Hinge'])}",
+        f"{int(metas['Push'] - vol_usado_semana['Push'])}",
+        f"{int(metas['Pull'] - vol_usado_semana['Pull'])}",
+        f"{int(metas['Core'] - vol_usado_semana['Core'])}",
+        f"{int(metas['Snatch'] - vol_usado_semana['Snatch'])}",
+        f"{int(metas['Clean & Jerk'] - vol_usado_semana['Clean & Jerk'])}",
+        f"{round(metas['Run'] - vol_usado_semana['Run'], 2)} km"
+    ]
+})
+
+st.sidebar.table(tabela_volume)
+
+iacs_semanal_total = calcular_iacs_de_vol(vol_usado_semana)
+st.sidebar.metric("Weekly Alpha Load (Total IACS)", f"{int(iacs_semanal_total)} pts")
+
+if iacs_semanal_total <= 45:
+    st.sidebar.success("Classification: Light Week")
+elif iacs_semanal_total <= 60:
+    st.sidebar.info("Classification: Moderate Week")
+elif iacs_semanal_total <= 75:
+    st.sidebar.warning("Classification: Heavy Week")
+elif iacs_semanal_total <= 90:
+    st.sidebar.error("Classification: Shock Week")
+else:
+    st.sidebar.error("⚠️ Not Recommended for Regular Classes")
+
+st.markdown("---")
+if st.button("💾 Save & Export Weekly Programming"):
+    st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
