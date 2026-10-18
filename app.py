@@ -404,41 +404,4 @@ for i, tab in enumerate(tabs):
                 with c3: t_s = st.number_input("Strength Max (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_s", 15), key=f"t_athx_s_{i}")
                 with c4: s_input = st.text_area(f"Strength Max ({t_s}')", treinos_salvos.get(f"{day_name}_s", ""), height=90, key=f"athx_s_{i}")
 
-                c5, c6 = st.columns([1, 3])
-                with c5: t_e = st.number_input("Endurance (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_e", 15), key=f"t_athx_e_{i}")
-                with c6: l_input = st.text_area(f"Endurance ({t_e}')", treinos_salvos.get(f"{day_name}_e", ""), height=90, key=f"athx_e_{i}")
-
-                c7, c8 = st.columns([1, 3])
-                with c7: t_m = st.number_input("MetCon X (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_m", 15), key=f"t_athx_m_{i}")
-                with c8: m_input = st.text_area(f"MetCon X ({t_m}')", treinos_salvos.get(f"{day_name}_m", ""), height=110, key=f"athx_m_{i}")
-
-                c9, c10 = st.columns([1, 3])
-                with c9: t_r = st.number_input("Mobility (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_r", 5), key=f"t_athx_r_{i}")
-                with c10: r_input = st.text_area(f"Mobility ({t_r}')", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=80, key=f"athx_r_{i}")
-
-                total_time = t_w + t_s + t_e + t_m + t_r
-                lista_blocos_do_dia = [{"texto": w_input, "tempo": t_w}, {"texto": s_input, "tempo": t_s}, {"texto": l_input, "tempo": t_e}, {"texto": m_input, "tempo": t_m}]
-                dados_para_salvar.update({f"{day_name}_t_w": t_w, f"{day_name}_w": w_input, f"{day_name}_t_s": t_s, f"{day_name}_s": s_input, f"{day_name}_t_e": t_e, f"{day_name}_e": l_input, f"{day_name}_t_m": t_m, f"{day_name}_m": m_input, f"{day_name}_t_r": t_r, f"{day_name}_r": r_input})
-
-            else:
-                c1, c2 = st.columns([1, 3])
-                with c1: t_w = st.number_input("Warm-Up (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_w", 10), key=f"t_cf_w_{i}")
-                with c2: w_input = st.text_area(f"1. Warm-Up ({t_w}')", treinos_salvos.get(f"{day_name}_w", "Warm-up"), height=100, key=f"cf_w_{i}")
-
-                c3, c4 = st.columns([1, 3])
-                with c3: t_s = st.number_input("Strength (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_s", 15), key=f"t_cf_s_{i}")
-                with c4: s_input = st.text_area(f"2. Strength ({t_s}')", treinos_salvos.get(f"{day_name}_s", ""), height=90, key=f"cf_s_{i}")
-
-                c5, c6 = st.columns([1, 3])
-                with c5: t_l = st.number_input("Skill (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_l", 10), key=f"t_cf_l_{i}")
-                with c6: l_input = st.text_area(f"3. Skill ({t_l}')", treinos_salvos.get(f"{day_name}_l", ""), height=120, key=f"cf_l_{i}")
-
-                c7, c8 = st.columns([1, 3])
-                with c7: t_m = st.number_input("WOD (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_m", 15), key=f"t_cf_m_{i}")
-                with c8: 
-                    m_input = st.text_area(f"4. WOD ({t_m}')", treinos_salvos.get(f"{day_name}_m", ""), height=140, key=f"cf_wod_{i}")
-                    st.caption(estimar_tempo_wod(m_input))
-
-                c9, c10 = st.columns([1, 3])
-                with c9: t_a = st.number_input("Accessory (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_a", 5), key=f"t_cf_a_{i}")
-                with c10: a_
+                c5, c6 = st.columns
