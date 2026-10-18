@@ -25,7 +25,7 @@ def salvar_treinos_disco(dados):
     except Exception:
         pass
 
-# 1. Configuração Básica da Página (Limpa e sem erros)
+# 1. Configuração Básica da Página
 st.set_page_config(
     page_title="Alpha Iron 2.0 - Workout Builder", 
     layout="wide"
@@ -82,10 +82,10 @@ carregar_logo_sidebar()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
-# --- IA: ESTIMATIVA DE TEMPO DO WOD ---
+# --- IA: ESTIMATIVA DE TEMPO DO WOD (ZERADA SE VAZIO) ---
 def estimar_tempo_wod(texto_wod):
     if not texto_wod or len(texto_wod.strip()) < 3:
-        return "Insira o WOD para calcular"
+        return "⏱️ WOD não programado (0 min)"
         
     texto_low = texto_wod.lower()
     
@@ -94,6 +94,8 @@ def estimar_tempo_wod(texto_wod):
         return f"⏱️ Time Cap Definido: {m_cap.group(1)} min"
 
     linhas = [l.strip() for l in texto_wod.split("\n") if l.strip()]
+    if not linhas:
+        return "⏱️ WOD não programado (0 min)"
     
     num_rounds = 1
     for l in linhas:
@@ -115,17 +117,20 @@ def estimar_tempo_wod(texto_wod):
                 if reps:
                     total_reps_base += reps[0]
 
+    if total_reps_base == 0:
+        return "⏱️ WOD não programado (0 min)"
+
     if num_rounds > 1 and not esquema_21_15_9:
         total_reps_totais = total_reps_base * num_rounds
     else:
-        total_reps_totais = total_reps_base if total_reps_base > 0 else 50
+        total_reps_totais = total_reps_base
 
     fator_tempo_por_rep = 2.5 
     if any(k in texto_low for k in ["bmu", "bar muscle", "muscle-up", "hspu", "snatch", "clean & jerk"]):
         fator_tempo_por_rep = 4.0 
 
     segundos_estimados = total_reps_totais * fator_tempo_por_rep
-    minutos_estimados = max(4, round(segundos_estimados / 60))
+    minutos_estimados = max(2, round(segundos_estimados / 60))
 
     return f"🤖 Estimativa da IA: ~{minutos_estimados} min (Volume aprox: {total_reps_totais} reps)"
 
@@ -436,123 +441,4 @@ for i, tab in enumerate(tabs):
 
                 c9, c10 = st.columns([1, 3])
                 with c9: t_a = st.number_input("Accessory (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_a", 5), key=f"t_cf_a_{i}")
-                with c10: a_input = st.text_area(f"5. Accessory ({t_a}')", treinos_salvos.get(f"{day_name}_a", "Accessory"), height=80, key=f"cf_a_{i}")
-
-                c11, c12 = st.columns([1, 3])
-                with c11: t_r = st.number_input("Mobility (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_r", 5), key=f"t_cf_r_{i}")
-                with c12: r_input = st.text_area(f"6. Mobility ({t_r}')", treinos_salvos.get(f"{day_name}_r", "Mobility"), height=80, key=f"cf_m_{i}")
-
-                total_time = t_w + t_s + t_l + t_m + t_a + t_r
-                lista_blocos_do_dia = [
-                    {"texto": w_input, "tempo": t_w}, {"texto": s_input, "tempo": t_s},
-                    {"texto": l_input, "tempo": t_l}, {"texto": m_input, "tempo": t_m},
-                    {"texto": a_input, "tempo": t_a}
-                ]
-                
-                dados_para_salvar.update({
-                    f"{day_name}_t_w": t_w, f"{day_name}_w": w_input,
-                    f"{day_name}_t_s": t_s, f"{day_name}_s": s_input,
-                    f"{day_name}_t_l": t_l, f"{day_name}_l": l_input,
-                    f"{day_name}_t_m": t_m, f"{day_name}_m": m_input,
-                    f"{day_name}_t_a": t_a, f"{day_name}_a": a_input,
-                    f"{day_name}_t_r": t_r, f"{day_name}_r": r_input
-                })
-
-            lista_blocos_semana_acumulados.extend(lista_blocos_do_dia)
-
-            # --- CÁLCULO DO IACS DIÁRIO ---
-            vol_dia = extrair_volume_acumulado_estruturado(lista_blocos_do_dia)
-            eh_especial = ("HYROX" in day_info["focus"] or "ATHX" in day_info["focus"])
-            iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
-
-            st.markdown("---")
-            col_metric1, col_metric2 = st.columns(2)
-            
-            with col_metric1:
-                if total_time > 60:
-                    st.warning(f"⚠️ **Duration:** {total_time} min / 60 min")
-                else:
-                    st.success(f"⏱️ **Duration:** {total_time} min / 60 min")
-
-            with col_metric2:
-                if iacs_dia <= 10:
-                    st.info(f"🟢 **Daily Alpha Load (IACS):** {iacs_dia} pts (Recovery)")
-                elif iacs_dia <= 20:
-                    st.success(f"🟡 **Daily Alpha Load (IACS):** {iacs_dia} pts (Moderate)")
-                elif iacs_dia <= 32:
-                    st.warning(f"🟠 **Daily Alpha Load (IACS):** {iacs_dia} pts (High Intensity)")
-                else:
-                    st.error(f"🔴 **Daily Alpha Load (IACS):** {iacs_dia} pts (Shock Session)")
-
-        with col2:
-            st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
-            escala_df = pd.DataFrame({
-                "Level": ["RX", "Intermediate", "Beginner", "Masters"],
-                "Load / Category": ["100% RX Load", "70-80% Load", "50% Load / Dumbbells", "Custom Scaling"],
-                "Gymnastics": ["Full Movement", "Medium Progression", "Basic Scale", "Range Focus"]
-            })
-            st.table(escala_df)
-            
-            st.markdown("### 💡 Intelligence Suggestions")
-            s_val = s_input if 's_input' in locals() else ""
-            l_val = l_input if 'l_input' in locals() else ""
-            m_val = m_input if 'm_input' in locals() else ""
-            
-            df_todas_sugestoes = gerar_todas_sugestoes(bloco, semana, s_val, l_val, m_val)
-            st.table(df_todas_sugestoes)
-            
-            st.markdown("---")
-            st.markdown("### 🔍 Validation Checklist")
-            st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
-            st.checkbox("Dominant movement pattern respected?", value=True, key=f"chk2_{i}")
-            st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
-            st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
-
-salvar_treinos_disco(dados_para_salvar)
-
-# --- CÁLCULO SEMANAL ---
-vol_usado_semana = extrair_volume_acumulado_estruturado(lista_blocos_semana_acumulados)
-
-tabela_volume = pd.DataFrame({
-    "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
-    "Target": [
-        f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", 
-        f"{int(metas['Pull'])}", f"{int(metas['Core'])}", f"{int(metas['Snatch'])}", 
-        f"{int(metas['Clean & Jerk'])}", f"{metas['Run']} km"
-    ],
-    "Used": [
-        f"{int(vol_usado_semana['Squat'])}", f"{int(vol_usado_semana['Hinge'])}", f"{int(vol_usado_semana['Push'])}", 
-        f"{int(vol_usado_semana['Pull'])}", f"{int(vol_usado_semana['Core'])}", f"{int(vol_usado_semana['Snatch'])}", 
-        f"{int(vol_usado_semana['Clean & Jerk'])}", f"{round(vol_usado_semana['Run'], 2)} km"
-    ],
-    "Balance": [
-        f"{int(metas['Squat'] - vol_usado_semana['Squat'])}",
-        f"{int(metas['Hinge'] - vol_usado_semana['Hinge'])}",
-        f"{int(metas['Push'] - vol_usado_semana['Push'])}",
-        f"{int(metas['Pull'] - vol_usado_semana['Pull'])}",
-        f"{int(metas['Core'] - vol_usado_semana['Core'])}",
-        f"{int(metas['Snatch'] - vol_usado_semana['Snatch'])}",
-        f"{int(metas['Clean & Jerk'] - vol_usado_semana['Clean & Jerk'])}",
-        f"{round(metas['Run'] - vol_usado_semana['Run'], 2)} km"
-    ]
-})
-
-st.sidebar.table(tabela_volume)
-
-iacs_semanal_total = calcular_iacs_de_vol(vol_usado_semana)
-st.sidebar.metric("Weekly Alpha Load (Total IACS)", f"{int(iacs_semanal_total)} pts")
-
-if iacs_semanal_total <= 45:
-    st.sidebar.success("Classification: Light Week")
-elif iacs_semanal_total <= 60:
-    st.sidebar.info("Classification: Moderate Week")
-elif iacs_semanal_total <= 75:
-    st.sidebar.warning("Classification: Heavy Week")
-elif iacs_semanal_total <= 90:
-    st.sidebar.error("Classification: Shock Week")
-else:
-    st.sidebar.error("⚠️ Not Recommended for Regular Classes")
-
-st.markdown("---")
-if st.button("💾 Save & Export Weekly Programming"):
-    st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
+                with c10: a_
