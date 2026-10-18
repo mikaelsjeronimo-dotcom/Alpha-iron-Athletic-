@@ -423,7 +423,7 @@ if menu_opcao == "🏠 Início (Dashboard)":
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
         if st.button("📅 Ir para Programação Semanal"):
-            st.info("Utilize o menu lateral para alternar entre as telas.")
+            st.info("Utilize o menu lateral para alternar para a Programação Semanal.")
     with col_a2:
         if st.button("⚙️ Montar / Editar Treinos"):
             st.info("Acesse a aba 'Montagem de Treinos' no menu lateral.")
@@ -434,11 +434,9 @@ if menu_opcao == "🏠 Início (Dashboard)":
     st.markdown("---")
     st.subheader("📊 Resumo de Volume da Semana")
     
-    # Simulação rápida do volume acumulado para exibir no Dashboard
     lista_temp = []
     for d_info in dias_semana:
         d_n = d_info["day"]
-        # Coleta rápida dos dados salvos no JSON
         w_t = treinos_salvos.get(f"{d_n}_t_w", 10)
         w_txt = treinos_salvos.get(f"{d_n}_w", "")
         m_t = treinos_salvos.get(f"{d_n}_t_m", 15)
@@ -455,10 +453,58 @@ if menu_opcao == "🏠 Início (Dashboard)":
     st.table(df_dash_vol)
 
 # ==========================================
-# TELA 2: PROGRAMAÇÃO SEMANAL / MONTAGEM DE TREINOS
+# TELA 2: PROGRAMAÇÃO SEMANAL DEDICADA
 # ==========================================
-elif menu_opcao in ["📅 Programação Semanal", "⚙️ Montagem de Treinos"]:
-    st.title("⚙️ Alpha Iron 2.0 — Workout Builder")
+elif menu_opcao == "📅 Programação Semanal":
+    st.title("📅 Programação Semanal Alpha Iron")
+    st.markdown("Consulte de forma limpa e objetiva o planejamento completo dos treinos de toda a semana.")
+    
+    dia_selecionado = st.selectbox("Selecione o Dia para Consulta Rápida", [d["day"] + " — " + d["focus"] for d in dias_semana])
+    dia_idx = [d["day"] + " — " + d["focus"] for d in dias_semana].index(dia_selecionado)
+    d_info = dias_semana[dia_idx]
+    d_name = d_info["day"]
+    
+    st.markdown(f"### 📋 Ficha Técnica: {d_name} ({d_info['focus']})")
+    
+    # Exibe os dados salvos para aquele dia de forma limpa
+    w_t = treinos_salvos.get(f"{d_name}_t_w", 10)
+    w_txt = treinos_salvos.get(f"{d_name}_w", "Não cadastrado")
+    m_t = treinos_salvos.get(f"{d_name}_t_m", 15)
+    m_txt = treinos_salvos.get(f"{d_name}_m", "Não cadastrado")
+    
+    st.markdown(f"**1. Warm-Up ({w_t} min):**")
+    st.code(w_txt, language="text")
+    
+    if d_name not in ["Monday", "Friday"]:
+        s_t = treinos_salvos.get(f"{d_name}_t_s", 15)
+        s_txt = treinos_salvos.get(f"{d_name}_s", "Não cadastrado")
+        l_t = treinos_salvos.get(f"{d_name}_t_l", 10)
+        l_txt = treinos_salvos.get(f"{d_name}_l", "Não cadastrado")
+        a_t = treinos_salvos.get(f"{d_name}_t_a", 5)
+        a_txt = treinos_salvos.get(f"{d_name}_a", "Não cadastrado")
+        r_t = treinos_salvos.get(f"{d_name}_t_r", 5)
+        r_txt = treinos_salvos.get(f"{d_name}_r", "Não cadastrado")
+        
+        st.markdown(f"**2. Strength ({s_t} min):**")
+        st.code(s_txt, language="text")
+        st.markdown(f"**3. Skill ({l_t} min):**")
+        st.code(l_txt, language="text")
+        st.markdown(f"**4. WOD ({m_t} min):**")
+        st.code(m_txt, language="text")
+        st.markdown(f"**5. Accessory ({a_t} min):**")
+        st.code(a_txt, language="text")
+        st.markdown(f"**6. Mobility ({r_t} min):**")
+        st.code(r_txt, language="text")
+    else:
+        st.markdown(f"**Main Block / MetCon ({m_t} min):**")
+        st.code(m_txt, language="text")
+
+# ==========================================
+# TELA 3: MONTAGEM E EDIÇÃO DE TREINOS
+# ==========================================
+elif menu_opcao == "⚙️ Montagem de Treinos":
+    st.title("⚙️ Alpha Iron 2.0 — Workout Builder & Editor")
+    st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume.")
     
     tabs = st.tabs([d["day"] for d in dias_semana])
     lista_blocos_semana_acumulados = []
@@ -470,6 +516,21 @@ elif menu_opcao in ["📅 Programação Semanal", "⚙️ Montagem de Treinos"]:
         
         with tab:
             st.subheader(f"{day_name} — {day_info['focus']}")
+            
+            # Ferramenta de Duplicação Rápida entre dias
+            with st.expander("🔄 Ferramenta de Duplicação Rápida"):
+                col_dup1, col_dup2 = st.columns([2, 1])
+                with col_dup1:
+                    dia_destino = st.selectbox("Copiar programação deste dia para:", [d["day"] for d in dias_semana if d["day"] != day_name], key=f"dup_sel_{i}")
+                with col_dup2:
+                    if st.button("Duplicar Agora", key=f"btn_dup_{i}"):
+                        # Copia os dados atuais do dia para o destino no dicionário de salvamento
+                        treinos_salvos[f"{dia_destino}_t_w"] = treinos_salvos.get(f"{day_name}_t_w", 10)
+                        treinos_salvos[f"{dia_destino}_w"] = treinos_salvos.get(f"{day_name}_w", "")
+                        treinos_salvos[f"{dia_destino}_t_m"] = treinos_salvos.get(f"{day_name}_t_m", 15)
+                        treinos_salvos[f"{dia_destino}_m"] = treinos_salvos.get(f"{day_name}_m", "")
+                        salvar_treinos_disco(treinos_salvos)
+                        st.success(f"Treino duplicado com sucesso para {dia_destino}!")
             
             col1, col2 = st.columns([1.3, 1])
             lista_blocos_do_dia = []
@@ -653,79 +714,4 @@ elif menu_opcao in ["📅 Programação Semanal", "⚙️ Montagem de Treinos"]:
             f"{int(metas['Hinge'] - vol_usado_semana['Hinge'])}",
             f"{int(metas['Push'] - vol_usado_semana['Push'])}",
             f"{int(metas['Pull'] - vol_usado_semana['Pull'])}",
-            f"{int(metas['Core'] - vol_usado_semana['Core'])}",
-            f"{int(metas['Snatch'] - vol_usado_semana['Snatch'])}",
-            f"{int(metas['Clean & Jerk'] - vol_usado_semana['Clean & Jerk'])}",
-            f"{round(metas['Run'] - vol_usado_semana['Run'], 2)} km"
-        ]
-    })
-
-    st.sidebar.table(tabela_volume)
-
-    iacs_semanal_total = calcular_iacs_de_vol(vol_usado_semana)
-    st.sidebar.metric("Weekly Alpha Load (Total IACS)", f"{int(iacs_semanal_total)} pts")
-
-    if iacs_semanal_total <= 45:
-        st.sidebar.success("Classification: Light Week")
-    elif iacs_semanal_total <= 60:
-        st.sidebar.info("Classification: Moderate Week")
-    elif iacs_semanal_total <= 75:
-        st.sidebar.warning("Classification: Heavy Week")
-    elif iacs_semanal_total <= 90:
-        st.sidebar.error("Classification: Shock Week")
-    else:
-        st.sidebar.error("⚠️ Not Recommended for Regular Classes")
-
-    st.markdown("---")
-    if st.button("💾 Save & Export Weekly Programming"):
-        st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
-
-# ==========================================
-# TELA 3, 4, 5, 6: BIBLIOTECAS E CONFIGURAÇÕES
-# ==========================================
-elif menu_opcao == "🔥 Biblioteca de WODs":
-    st.title("🔥 Biblioteca de WODs Alpha")
-    st.markdown("Consulte e reutilize os principais WODs e benchmarks cadastrados na metodologia.")
-    
-    # Exemplo estruturado de WODs salvos/padrão
-    wods_exemplos = [
-        {"Nome": "Fran", "Tipo": "For Time (21-15-9)", "Movimentos": "Thrusters (95/65 lbs) + Pull-ups", "Categoria": "Benchmark"},
-        {"Nome": "Isabel", "Tipo": "For Time (30 Reps)", "Movimentos": "Power Snatches (135/95 lbs)", "Categoria": "Weightlifting"},
-        {"Nome": "Grace", "Tipo": "For Time (30 Reps)", "Movimentos": "Clean & Jerks (135/95 lbs)", "Categoria": "Weightlifting"},
-        {"Nome": "Helen", "Tipo": "3 Rounds For Time", "Movimentos": "400m Run + 21 KB Swings + 12 Pull-ups", "Categoria": "Engine"},
-        {"Nome": "Cindy", "Tipo": "AMRAP 20 min", "Movimentos": "5 Pull-ups + 10 Push-ups + 15 Air Squats", "Categoria": "Gymnastics"}
-    ]
-    st.table(pd.DataFrame(wods_exemplos))
-
-elif menu_opcao == "🏋️‍♂️ Biblioteca de Exercícios":
-    st.title("🏋️‍♂️ Biblioteca de Exercícios & Padrões")
-    st.markdown("Consulta rápida dos padrões de movimento monitorados pelo IACS (MCVS).")
-    
-    exercicios_db = [
-        {"Padrão": "Squat", "Exercícios Principais": "Back Squat, Front Squat, OHS, Wall Ball, Thruster, Lunges"},
-        {"Padrão": "Hinge", "Exercícios Principais": "Deadlift, RDL, Power Clean, Squat Clean, Snatch, KB Swing"},
-        {"Padrão": "Push", "Exercícios Principais": "Strict Press, Push Press, HSPU, Bench Press, Push-ups"},
-        {"Padrão": "Pull", "Exercícios Principais": "Pull-ups, Chest-to-Bar, Bar Muscle-Up, Row, Rope Climb"},
-        {"Padrão": "Core", "Exercícios Principais": "Toes-to-Bar, Sit-ups, V-ups, Hollow Hold, Planks"}
-    ]
-    st.table(pd.DataFrame(exercicios_db))
-
-elif menu_opcao == "💾 Treinos Salvos":
-    st.title("💾 Histórico de Treinos Salvos")
-    st.markdown("Visualize o conteúdo armazenado no banco de dados local em tempo real (`treinos_salvos.json`).")
-    
-    if treinos_salvos:
-        st.json(treinos_salvos)
-    else:
-        st.info("Nenhum treino salvo no momento. Utilize a aba de montagem para registrar dados.")
-
-elif menu_opcao == "⚙️ Configurações":
-    st.title("⚙️ Configurações do Sistema")
-    st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0.")
-    
-    st.text_input("Nome da Unidade", value="Alpha Iron Athletics - São Paulo")
-    st.text_input("Responsável Técnico", value="Mikael Santos")
-    st.selectbox("Tema da Interface", ["Dark Alpha (Padrão)", "High Contrast"])
-    
-    if st.button("Salvar Configurações"):
-        st.success("Configurações atualizadas com sucesso!")
+            f"{int(metas['Core'] - vol_
