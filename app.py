@@ -82,58 +82,6 @@ carregar_logo_sidebar()
 
 st.title("🏋️‍♂️ Alpha Iron Athletics 2.0 — Workout Builder")
 
-# --- IA: ESTIMATIVA DE TEMPO DO WOD (ZERADA SE VAZIO) ---
-def estimar_tempo_wod(texto_wod):
-    if not texto_wod or len(texto_wod.strip()) < 3:
-        return "⏱️ WOD não programado (0 min)"
-        
-    texto_low = texto_wod.lower()
-    
-    m_cap = re.search(r'(?:cap|time cap)\D*(\d+)', texto_low)
-    if m_cap:
-        return f"⏱️ Time Cap Definido: {m_cap.group(1)} min"
-
-    linhas = [l.strip() for l in texto_wod.split("\n") if l.strip()]
-    if not linhas:
-        return "⏱️ WOD não programado (0 min)"
-    
-    num_rounds = 1
-    for l in linhas:
-        m_rnds = re.search(r'(\d+)\s*(?:rounds|rnds|sets|series|séries|rodadas)', l.lower())
-        if m_rnds:
-            num_rounds = int(m_rnds.group(1))
-            break
-            
-    total_reps_base = 0
-    esquema_21_15_9 = re.findall(r'(\d+)-(\d+)-(\d+)', texto_low)
-    if esquema_21_15_9:
-        for a, b, c in esquema_21_15_9:
-            total_reps_base = (int(a) + int(b) + int(c)) * 3
-    else:
-        for l in linhas:
-            nums = re.findall(r'\b(\d+)\b', l)
-            if nums:
-                reps = [int(n) for n in nums if int(n) <= 200]
-                if reps:
-                    total_reps_base += reps[0]
-
-    if total_reps_base == 0:
-        return "⏱️ WOD não programado (0 min)"
-
-    if num_rounds > 1 and not esquema_21_15_9:
-        total_reps_totais = total_reps_base * num_rounds
-    else:
-        total_reps_totais = total_reps_base
-
-    fator_tempo_por_rep = 2.5 
-    if any(k in texto_low for k in ["bmu", "bar muscle", "muscle-up", "hspu", "snatch", "clean & jerk"]):
-        fator_tempo_por_rep = 4.0 
-
-    segundos_estimados = total_reps_totais * fator_tempo_por_rep
-    minutos_estimados = max(2, round(segundos_estimados / 60))
-
-    return f"🤖 Estimativa da IA: ~{minutos_estimados} min (Volume aprox: {total_reps_totais} reps)"
-
 # --- TABELA DE VOLUME IDEAL DINÂMICO POR BLOCO E SEMANA ---
 def obter_metas_volume(bloco_sel, semana_sel):
     base = {
@@ -435,9 +383,7 @@ for i, tab in enumerate(tabs):
 
                 c7, c8 = st.columns(2)
                 with c7: t_m = st.number_input("WOD (min)", 1, 60, treinos_salvos.get(f"{day_name}_t_m", 15), key=f"t_cf_m_{i}")
-                with c8: 
-                    m_input = st.text_area(f"4. WOD ({t_m}')", treinos_salvos.get(f"{day_name}_m", ""), height=140, key=f"cf_wod_{i}")
-                    st.caption(estimar_tempo_wod(m_input))
+                with c8: m_input = st.text_area(f"4. WOD ({t_m}')", treinos_salvos.get(f"{day_name}_m", ""), height=140, key=f"cf_wod_{i}")
 
                 c9, c10 = st.columns(2)
                 with c9: t_a = st.number_input("Accessory (min)", 0, 60, treinos_salvos.get(f"{day_name}_t_a", 5), key=f"t_cf_a_{i}")
