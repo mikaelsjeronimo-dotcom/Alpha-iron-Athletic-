@@ -422,7 +422,7 @@ dias_semana = [
     {"day": "Monday", "focus": "HYROX"},
     {"day": "Tuesday", "focus": "CrossFit - Strength / LPO"},
     {"day": "Wednesday", "focus": "CrossFit - Gymnastics"},
-    {"day": "Thursday", "focus": "CrossFit - Engine"},
+    {"day": "Thursday", "focus": "CrossFit - Strength / LPO"},
     {"day": "Friday", "focus": "ATHX"},
     {"day": "Saturday", "focus": "Community WOD"},
     {"day": "Sunday", "focus": "Benchmark / Hero"}
