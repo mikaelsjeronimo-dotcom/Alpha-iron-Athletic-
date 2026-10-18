@@ -435,50 +435,84 @@ for i, tab in enumerate(tabs):
             eh_especial = ("HYROX" in day_info["focus"] or "ATHX" in day_info["focus"])
             iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
 
-            st.markdown("---")
-            col_metric1, col_metric2 = st.columns(2)
-            
-            with col_metric1:
-                if total_time > 60:
-                    st.warning(f"⚠️ **Duration:** {total_time} min / 60 min")
-                else:
-                    st.success(f"⏱️ **Duration:** {total_time} min / 60 min")
+            st.markdown("""
+    <style>
+    /* Importando fonte moderna Google Fonts (Inter) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-            with col_metric2:
-                if iacs_dia <= 10:
-                    st.info(f"🟢 **Daily Alpha Load (IACS):** {iacs_dia} pts (Recovery)")
-                elif iacs_dia <= 20:
-                    st.success(f"🟡 **Daily Alpha Load (IACS):** {iacs_dia} pts (Moderate)")
-                elif iacs_dia <= 32:
-                    st.warning(f"🟠 **Daily Alpha Load (IACS):** {iacs_dia} pts (High Intensity)")
-                else:
-                    st.error(f"🔴 **Daily Alpha Load (IACS):** {iacs_dia} pts (Shock Session)")
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
 
-        with col2:
-            st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
-            escala_df = pd.DataFrame({
-                "Level": ["RX", "Intermediate", "Beginner", "Masters"],
-                "Load / Category": ["100% RX Load", "70-80% Load", "50% Load / Dumbbells", "Custom Scaling"],
-                "Gymnastics": ["Full Movement", "Medium Progression", "Basic Scale", "Range Focus"]
-            })
-            st.table(escala_df)
-            
-            st.markdown("### 💡 Intelligence Suggestions")
-            s_val = s_input if 's_input' in locals() else ""
-            l_val = l_input if 'l_input' in locals() else ""
-            m_val = m_input if 'm_input' in locals() else ""
-            
-            df_todas_sugestoes = gerar_todas_sugestoes(bloco, semana, s_val, l_val, m_val)
-            st.table(df_todas_sugestoes)
-            
-            st.markdown("---")
-            st.markdown("### 🔍 Validation Checklist")
-            st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
-            st.checkbox("Dominant movement pattern respected?", value=True, key=f"chk2_{i}")
-            st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
-            st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
+    /* Fundo geral da aplicação */
+    .main {
+        background-color: #0b0e14;
+        color: #e2e8f0;
+    }
 
-salvar_treinos_disco(dados_para_salvar)
+    /* Sidebar com tom ligeiramente diferenciado para contraste */
+    section[data-testid="stSidebar"] {
+        background-color: #111827;
+        border-right: 1px solid #1f2937;
+    }
+
+    /* Estilização de Títulos */
+    h1, h2, h3 {
+        color: #f8fafc !important;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+    
+    h1 {
+        font-size: 1.8rem !important;
+        border-bottom: 2px solid #ef4444;
+        padding-bottom: 8px;
+        margin-bottom: 20px;
+    }
+
+    /* Caixas de métricas com efeito moderno */
+    .stMetric {
+        background-color: #161e2e;
+        border: 1px solid #1f2937;
+        padding: 14px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Tabelas e Dataframes */
+    table {
+        background-color: #161e2e !important;
+        border-radius: 8px;
+    }
+
+    /* Botões com destaque em vermelho Alpha Iron */
+    .stButton>button {
+        background-color: #dc2626;
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #b91c1c;
+        box-shadow: 0 0 12px rgba(220, 38, 38, 0.4);
+    }
+
+    /* Caixas de texto e inputs */
+    textarea, input {
+        background-color: #161e2e !important;
+        color: #f8fafc !important;
+        border: 1px solid #374151 !important;
+        border-radius: 8px !important;
+    }
+    textarea:focus, input:focus {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- CÁLCULO SEMANAL ---
 vol_usado_semana = extrair_volume_acumulado_estruturado(lista_blocos_semana_acumulados)
