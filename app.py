@@ -31,7 +31,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- DESIGN SYSTEM / CSS CUSTOMIZADO (ALPHA IRON ATHLETICS) ---
+# --- DESIGN SYSTEM / CSS CUSTOMIZADO (ALPHA IRON ATHLETICS - AZUL ELÉTRICO) ---
 st.markdown("""
     <style>
     /* Remove a barra/cabeçalho branco padrão do Streamlit no topo */
@@ -51,9 +51,9 @@ st.markdown("""
         border-right: 1px solid #22262d;
     }
 
-    /* Títulos e Cabeçalhos com o Vermelho Alpha Iron */
+    /* Títulos e Cabeçalhos com Azul Elétrico */
     h1, h2, h3, h4 {
-        color: #7966F2 !important;
+        color: #00E5FF !important;
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
         letter-spacing: -0.5px;
@@ -78,8 +78,8 @@ st.markdown("""
     }
 
     .stTabs [aria-selected="true"] {
-        background-color: #ff3333 !important;
-        color: #ffffff !important;
+        background-color: #00E5FF !important;
+        color: #0e1117 !important;
     }
 
     /* Inputs de texto e áreas de texto */
@@ -91,8 +91,8 @@ st.markdown("""
     }
     
     .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: #ff3333 !important;
-        box-shadow: 0 0 5px rgba(255, 51, 51, 0.3) !important;
+        border-color: #00E5FF !important;
+        box-shadow: 0 0 5px rgba(0, 229, 255, 0.3) !important;
     }
 
     /* Métricas */
@@ -114,24 +114,24 @@ st.markdown("""
     
     th {
         background-color: #1f242d !important;
-        color: #ff3333 !important;
+        color: #00E5FF !important;
     }
 
-    /* Botões personalizados */
+    /* Botões personalizados com Azul Elétrico */
     .stButton button {
-        background: linear-gradient(135deg, #cc0000 0%, #ff3333 100%);
-        color: white;
+        background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%);
+        color: #0e1117;
         font-weight: 700;
         border-radius: 8px;
         border: none;
         padding: 0.6rem 1.2rem;
-        box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
         transition: all 0.3s ease;
     }
     
     .stButton button:hover {
-        background: linear-gradient(135deg, #e60000 0%, #ff4d4d 100%);
-        box-shadow: 0 6px 16px rgba(255, 51, 51, 0.5);
+        background: linear-gradient(135deg, #0066ff 0%, #33edff 100%);
+        box-shadow: 0 6px 16px rgba(0, 229, 255, 0.5);
         transform: translateY(-1px);
     }
     </style>
@@ -171,24 +171,24 @@ def carregar_logo_sidebar():
                 unsafe_allow_html=True
             )
         except Exception:
-            st.sidebar.markdown("<h2 style='text-align: center; color: #ff3333;'>ALPHA IRON</h2>", unsafe_allow_html=True)
+            st.sidebar.markdown("<h2 style='text-align: center; color: #00E5FF;'>ALPHA IRON</h2>", unsafe_allow_html=True)
     else:
-        st.sidebar.markdown("<h2 style='text-align: center; color: #ff3333;'>ALPHA IRON</h2>", unsafe_allow_html=True)
+        st.sidebar.markdown("<h2 style='text-align: center; color: #00E5FF;'>ALPHA IRON</h2>", unsafe_allow_html=True)
 
 carregar_logo_sidebar()
 
 # --- MENU LATERAL DE NAVEGAÇÃO PROFISSIONAL ---
-st.sidebar.markdown("###  Menu Principal")
+st.sidebar.markdown("### Menu Principal")
 menu_opcao = st.sidebar.radio(
     "Navegação",
     [
-        " Início (Dashboard)",
-        " Programação Semanal",
-        " Montagem de Treinos",
-        " Biblioteca de WODs",
-        " Biblioteca de Exercícios",
-        " Treinos Salvos",
-        " Configurações"
+        "Início (Dashboard)",
+        "Programação Semanal",
+        "Montagem de Treinos",
+        "Biblioteca de WODs",
+        "Biblioteca de Exercícios",
+        "Treinos Salvos",
+        "Configurações"
     ],
     label_visibility="collapsed"
 )
@@ -196,7 +196,7 @@ menu_opcao = st.sidebar.radio(
 st.sidebar.markdown("---")
 
 # --- BARRA LATERAL: PERIODIZAÇÃO ---
-st.sidebar.header(" Periodização (Planilha 2.0)")
+st.sidebar.header("Periodização (Planilha 2.0)")
 bloco = st.sidebar.selectbox("Periodization Phase", [
     "Block 1 - Strength Focus",
     "Block 2 - Engine Focus",
@@ -418,8 +418,8 @@ treinos_salvos = carregar_treinos_salvos()
 # ==========================================
 # TELA 1: INÍCIO (DASHBOARD)
 # ==========================================
-if menu_opcao == "🏠 Início (Dashboard)":
-    st.title("🏋️‍♂️ Alpha Iron Athletics — Painel Principal")
+if menu_opcao == "Início (Dashboard)":
+    st.title("Alpha Iron Athletics — Painel Principal")
     st.markdown("Bem-vindo ao centro de comando da periodização e montagem de treinos da metodologia Alpha.")
     
     col_d1, col_d2, col_d3 = st.columns(3)
@@ -428,24 +428,24 @@ if menu_opcao == "🏠 Início (Dashboard)":
     with col_d2:
         st.metric("Ciclo Semanal", semana.split(" - ")[1])
     with col_d3:
-        st.metric("Status da Base", "Sincronizado 🟢")
+        st.metric("Status da Base", "Sincronizado")
 
     st.markdown("---")
-    st.subheader("🚀 Atalhos Rápidos")
+    st.subheader("Atalhos Rápidos")
     
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
-        if st.button("📅 Ir para Programação Semanal"):
+        if st.button("Ir para Programação Semanal"):
             st.info("Utilize o menu lateral para alternar para a Programação Semanal.")
     with col_a2:
-        if st.button("⚙️ Montar / Editar Treinos"):
-            st.info("Acesse a aba 'Montagem de Treinos' no menu lateral.")
+        if st.button("Montar / Editar Treinos"):
+            st.info("Acesse 'Montagem de Treinos' no menu lateral.")
     with col_a3:
-        if st.button("💾 Exportar / Salvar Programação"):
+        if st.button("Exportar / Salvar Programação"):
             st.success("Dados salvos com sucesso em tempo real!")
 
     st.markdown("---")
-    st.subheader("📊 Resumo de Volume da Semana")
+    st.subheader("Resumo de Volume da Semana")
     
     lista_temp = []
     for d_info in dias_semana:
@@ -468,8 +468,8 @@ if menu_opcao == "🏠 Início (Dashboard)":
 # ==========================================
 # TELA 2: PROGRAMAÇÃO SEMANAL DEDICADA
 # ==========================================
-elif menu_opcao == "📅 Programação Semanal":
-    st.title("📅 Programação Semanal Alpha Iron")
+elif menu_opcao == "Programação Semanal":
+    st.title("Programação Semanal Alpha Iron")
     st.markdown("Consulte de forma limpa e objetiva o planejamento completo dos treinos de toda a semana.")
     
     dia_selecionado = st.selectbox("Selecione o Dia para Consulta Rápida", [d["day"] + " — " + d["focus"] for d in dias_semana])
@@ -477,7 +477,7 @@ elif menu_opcao == "📅 Programação Semanal":
     d_info = dias_semana[dia_idx]
     d_name = d_info["day"]
     
-    st.markdown(f"### 📋 Ficha Técnica: {d_name} ({d_info['focus']})")
+    st.markdown(f"### Ficha Técnica: {d_name} ({d_info['focus']})")
     
     w_t = treinos_salvos.get(f"{d_name}_t_w", 10)
     w_txt = treinos_salvos.get(f"{d_name}_w", "Não cadastrado")
@@ -514,8 +514,8 @@ elif menu_opcao == "📅 Programação Semanal":
 # ==========================================
 # TELA 3: MONTAGEM E EDIÇÃO DE TREINOS
 # ==========================================
-elif menu_opcao == "⚙️ Montagem de Treinos":
-    st.title("⚙️ Alpha Iron 2.0 — Workout Builder & Editor")
+elif menu_opcao == "Montagem de Treinos":
+    st.title("Alpha Iron 2.0 — Workout Builder & Editor")
     st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume.")
     
     tabs = st.tabs([d["day"] for d in dias_semana])
@@ -529,7 +529,7 @@ elif menu_opcao == "⚙️ Montagem de Treinos":
         with tab:
             st.subheader(f"{day_name} — {day_info['focus']}")
             
-            with st.expander("🔄 Ferramenta de Duplicação Rápida"):
+            with st.expander("Ferramenta de Duplicação Rápida"):
                 col_dup1, col_dup2 = st.columns([2, 1])
                 with col_dup1:
                     dia_destino = st.selectbox("Copiar programação deste dia para:", [d["day"] for d in dias_semana if d["day"] != day_name], key=f"dup_sel_{i}")
@@ -546,11 +546,11 @@ elif menu_opcao == "⚙️ Montagem de Treinos":
             lista_blocos_do_dia = []
             
             with col1:
-                st.markdown("### 📋 Session Structure (60 min)")
+                st.markdown("### Session Structure (60 min)")
                 t_s, t_m = 0, 0
                 
                 if day_name == "Monday":
-                    st.info("🏃 **HYROX Session:** Running + Functional Stations")
+                    st.info("HYROX Session: Running + Functional Stations")
                     c1, c2 = st.columns([1, 4])
                     with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_hy_w_{i}")
                     with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic Mobility"), height=75, key=f"hy_w_{i}")
@@ -573,7 +573,7 @@ elif menu_opcao == "⚙️ Montagem de Treinos":
                     dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
 
                 elif day_name == "Friday":
-                    st.info("🔥 **ATHX Session:** Fixed Structure")
+                    st.info("ATHX Session: Fixed Structure")
                     c1, c2 = st.columns([1, 4])
                     with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_athx_w_{i}")
                     with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic"), height=75, key=f"athx_w_{i}")
@@ -664,22 +664,22 @@ elif menu_opcao == "⚙️ Montagem de Treinos":
                 
                 with col_metric1:
                     if total_time > 60:
-                        st.warning(f"⚠️ **Duration:** {total_time} min / 60 min")
+                        st.warning(f"Duration: {total_time} min / 60 min")
                     else:
-                        st.success(f"⏱️ **Duration:** {total_time} min / 60 min")
+                        st.success(f"Duration: {total_time} min / 60 min")
 
                 with col_metric2:
                     if iacs_dia <= 10:
-                        st.info(f"🟢 **Daily Alpha Load (IACS):** {iacs_dia} pts (Recovery)")
+                        st.info(f"Daily Alpha Load (IACS): {iacs_dia} pts (Recovery)")
                     elif iacs_dia <= 20:
-                        st.success(f"🟡 **Daily Alpha Load (IACS):** {iacs_dia} pts (Moderate)")
+                        st.success(f"Daily Alpha Load (IACS): {iacs_dia} pts (Moderate)")
                     elif iacs_dia <= 32:
-                        st.warning(f"🟠 **Daily Alpha Load (IACS):** {iacs_dia} pts (High Intensity)")
+                        st.warning(f"Daily Alpha Load (IACS): {iacs_dia} pts (High Intensity)")
                     else:
-                        st.error(f"🔴 **Daily Alpha Load (IACS):** {iacs_dia} pts (Shock Session)")
+                        st.error(f"Daily Alpha Load (IACS): {iacs_dia} pts (Shock Session)")
 
             with col2:
-                st.markdown("### 🎯 Scaling Chart (RX / INT / BEG / MASTERS)")
+                st.markdown("### Scaling Chart (RX / INT / BEG / MASTERS)")
                 escala_df = pd.DataFrame({
                     "Level": ["RX", "Intermediate", "Beginner", "Masters"],
                     "Load / Category": ["100% RX Load", "70-80% Load", "50% Load / Dumbbells", "Custom Scaling"],
@@ -687,7 +687,7 @@ elif menu_opcao == "⚙️ Montagem de Treinos":
                 })
                 st.table(escala_df)
                 
-                st.markdown("### 💡 Intelligence Suggestions")
+                st.markdown("### Intelligence Suggestions")
                 s_val = s_input if 's_input' in locals() else ""
                 l_val = l_input if 'l_input' in locals() else ""
                 m_val = m_input if 'm_input' in locals() else ""
@@ -696,7 +696,7 @@ elif menu_opcao == "⚙️ Montagem de Treinos":
                 st.table(df_todas_sugestoes)
                 
                 st.markdown("---")
-                st.markdown("### 🔍 Validation Checklist")
+                st.markdown("### Validation Checklist")
                 st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
                 st.checkbox("Dominant movement pattern respected?", value=True, key=f"chk2_{i}")
                 st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
@@ -745,17 +745,17 @@ elif menu_opcao == "⚙️ Montagem de Treinos":
     elif iacs_semanal_total <= 90:
         st.sidebar.error("Classification: Shock Week")
     else:
-        st.sidebar.error("⚠️ Not Recommended for Regular Classes")
+        st.sidebar.error("Not Recommended for Regular Classes")
 
     st.markdown("---")
-    if st.button("💾 Save & Export Weekly Programming"):
+    if st.button("Save & Export Weekly Programming"):
         st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
 
 # ==========================================
 # TELAS 4, 5, 6, 7: BIBLIOTECAS E CONFIGURAÇÕES
 # ==========================================
-elif menu_opcao == "🔥 Biblioteca de WODs":
-    st.title("🔥 Biblioteca de WODs Alpha")
+elif menu_opcao == "Biblioteca de WODs":
+    st.title("Biblioteca de WODs Alpha")
     st.markdown("Consulte e reutilize os principais WODs e benchmarks cadastrados na metodologia.")
     
     wods_exemplos = [
@@ -767,8 +767,8 @@ elif menu_opcao == "🔥 Biblioteca de WODs":
     ]
     st.table(pd.DataFrame(wods_exemplos))
 
-elif menu_opcao == "🏋️‍♂️ Biblioteca de Exercícios":
-    st.title("🏋️‍♂️ Biblioteca de Exercícios & Padrões")
+elif menu_opcao == "Biblioteca de Exercícios":
+    st.title("Biblioteca de Exercícios & Padrões")
     st.markdown("Consulta rápida dos padrões de movimento monitorados pelo IACS (MCVS).")
     
     exercicios_db = [
@@ -780,8 +780,8 @@ elif menu_opcao == "🏋️‍♂️ Biblioteca de Exercícios":
     ]
     st.table(pd.DataFrame(exercicios_db))
 
-elif menu_opcao == "💾 Treinos Salvos":
-    st.title("💾 Histórico de Treinos Salvos")
+elif menu_opcao == "Treinos Salvos":
+    st.title("Histórico de Treinos Salvos")
     st.markdown("Visualize o conteúdo armazenado no banco de dados local em tempo real (`treinos_salvos.json`).")
     
     if treinos_salvos:
@@ -789,8 +789,8 @@ elif menu_opcao == "💾 Treinos Salvos":
     else:
         st.info("Nenhum treino salvo no momento. Utilize a aba de montagem para registrar dados.")
 
-elif menu_opcao == "⚙️ Configurações":
-    st.title("⚙️ Configurações do Sistema")
+elif menu_opcao == "Configurações":
+    st.title("Configurações do Sistema")
     st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0.")
     
     st.text_input("Nome da Unidade", value="Alpha Iron Athletics - São Paulo")
@@ -799,3 +799,4 @@ elif menu_opcao == "⚙️ Configurações":
     
     if st.button("Salvar Configurações"):
         st.success("Configurações atualizadas com sucesso!")
+
