@@ -51,6 +51,30 @@ st.markdown("""
         border-right: 1px solid #22262d;
     }
 
+    /* OCULTAR OS CÍRCULOS (BOLINHAS) DO MENU LATERAL (RADIO) */
+    [data-testid="stSidebar"] input[type="radio"] {
+        display: none !important;
+    }
+    
+    /* Estilização limpa para os itens do menu lateral sem os botões vermelhos/padrão */
+    [data-testid="stSidebar"] div.row-widget.stRadio > div {
+        gap: 4px;
+    }
+    [data-testid="stSidebar"] div.row-widget.stRadio label {
+        background-color: transparent;
+        padding: 6px 10px;
+        border-radius: 6px;
+        color: #9ca3af;
+        font-weight: 500;
+        cursor: pointer;
+        width: 100%;
+        transition: all 0.2s ease;
+    }
+    [data-testid="stSidebar"] div.row-widget.stRadio label:hover {
+        background-color: #1a1d24;
+        color: #00E5FF;
+    }
+
     /* Títulos e Cabeçalhos com Azul Elétrico */
     h1, h2, h3, h4 {
         color: #00E5FF !important;
@@ -199,7 +223,7 @@ st.sidebar.markdown("### Menu Principal")
 menu_opcao = st.sidebar.radio(
     "Navegação",
     opcoes_menu,
-    index=opcoes_menu.index(st.session_state.menu_escolhido),
+    index=opcoes_menu.index(st.session_state.menu_escolhido) if st.session_state.menu_escolhido in opcoes_menu else 0,
     label_visibility="collapsed",
     key="radio_navegacao",
     on_change=atualizar_menu
