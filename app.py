@@ -177,21 +177,36 @@ def carregar_logo_sidebar():
 
 carregar_logo_sidebar()
 
+# --- CONTROLE DE ESTADO DA NAVEGAÇÃO ---
+if "menu_escolhido" not in st.session_state:
+    st.session_state.menu_escolhido = "Início (Dashboard)"
+
 # --- MENU LATERAL DE NAVEGAÇÃO PROFISSIONAL ---
 st.sidebar.markdown("### Menu Principal")
+
+opcoes_menu = [
+    "Início (Dashboard)",
+    "Programação Semanal",
+    "Montagem de Treinos",
+    "Biblioteca de WODs",
+    "Biblioteca de Exercícios",
+    "Treinos Salvos",
+    "Configurações"
+]
+
+# Sincroniza o rádio com o session_state
 menu_opcao = st.sidebar.radio(
     "Navegação",
-    [
-        "Início (Dashboard)",
-        "Programação Semanal",
-        "Montagem de Treinos",
-        "Biblioteca de WODs",
-        "Biblioteca de Exercícios",
-        "Treinos Salvos",
-        "Configurações"
-    ],
-    label_visibility="collapsed"
+    opcoes_menu,
+    index=opcoes_menu.index(st.session_state.menu_escolhido) if st.session_state.menu_escolhido in opcoes_menu else 0,
+    label_visibility="collapsed",
+    key="radio_navegacao"
 )
+
+# Atualiza o estado se o usuário clicou no menu lateral
+if menu_opcao != st.session_state.menu_escolhido:
+    st.session_state.menu_escolhido = menu_opcao
+    st.rerun()
 
 st.sidebar.markdown("---")
 
@@ -347,34 +362,25 @@ def calcular_iacs_de_vol(vol_dict, eh_especial=False):
         score += 15
     return int(score)
 
-# --- CÁLCULO CIENTÍFICO DA INTENSIDADE DO WOD ISOLADO (ALPHA WOD LOAD) ---
 def calcular_alpha_wod_load(texto_wod, tempo_wod):
     if not texto_wod or not texto_wod.strip():
         return 0
-    
     txt_low = texto_wod.lower()
     vol_wod = extrair_volume_acumulado_estruturado([{"texto": texto_wod, "tempo": tempo_wod}])
-    
-    # Soma total de volume mecânico do WOD
     volume_total_reps = sum(vol_wod.values()) - vol_wod["Run"]
     quilometragem_run = vol_wod["Run"]
     
-    # Fator de densidade metabólica com base no tempo de exposição e modalidade
     fator_modalidade = 1.0
     if "for time" in txt_low:
-        fator_modalidade = 1.35 # Estímulo máximo anaerobic-aerobic power
+        fator_modalidade = 1.35
     elif "amrap" in txt_low:
-        fator_modalidade = 1.25 # Alta densidade sob fadiga acumulada
+        fator_modalidade = 1.25
     elif "emom" in txt_low or "e90" in txt_low:
-        fator_modalidade = 1.10 # Pacing intervalado
+        fator_modalidade = 1.10
     
-    # Pontuação base científica (Volume * Densidade + Corrida ponderada)
     score_wod = (volume_total_reps * 0.15 + quilometragem_run * 4.0) * fator_modalidade
-    
-    # Se houver movimentos de alta complexidade técnica (Gymnastics avançada ou LPO no WOD)
     if any(k in txt_low for k in ["muscle-up", "bmu", "hspu", "snatch", "clean & jerk", "rope climb"]):
         score_wod *= 1.2
-        
     return int(max(score_wod, 5 if len(txt_low) > 5 else 0))
 
 METODOLOGIA_BASE = {
@@ -430,7 +436,7 @@ treinos_salvos = carregar_treinos_salvos()
 # ==========================================
 # TELA 1: INÍCIO (DASHBOARD)
 # ==========================================
-if menu_opcao == "Início (Dashboard)":
+if st.session_state.menu_escolhido == "Início (Dashboard)":
     st.title("Alpha Iron Athletics — Painel Principal")
     st.markdown("Bem-vindo ao centro de comando da periodização e montagem de treinos da metodologia Alpha.")
     
@@ -447,14 +453,17 @@ if menu_opcao == "Início (Dashboard)":
     
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
-        if st.button("Ir para Programação Semanal"):
-            st.info("Utilize o menu lateral para alternar para a Programação Semanal.")
+        if st.button("Programação Semanal"):
+            st.session_state.menu_escolhido = "Programação Semanal"
+            st.rerun()
     with col_a2:
         if st.button("Montar / Editar Treinos"):
-            st.info("Acesse 'Montagem de Treinos' no menu lateral.")
+            st.session_state.menu_escolhido = "Montagem de Treinos"
+            st.rerun()
     with col_a3:
-        if st.button("Exportar / Salvar Programação"):
-            st.success("Dados salvos com sucesso em tempo real!")
+        if st.button("Treinos Salvos"):
+            st.session_state.menu_escolhido = "Treinos Salvos"
+            st.rerun()
 
     st.markdown("---")
     st.subheader("Resumo de Volume da Semana")
@@ -480,7 +489,7 @@ if menu_opcao == "Início (Dashboard)":
 # ==========================================
 # TELA 2: PROGRAMAÇÃO SEMANAL DEDICADA
 # ==========================================
-elif menu_opcao == "Programação Semanal":
+elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
     st.markdown("Consulte de forma limpa e objetiva o planejamento completo dos treinos de toda a semana.")
     
@@ -526,7 +535,7 @@ elif menu_opcao == "Programação Semanal":
 # ==========================================
 # TELA 3: MONTAGEM E EDIÇÃO DE TREINOS
 # ==========================================
-elif menu_opcao == "Montagem de Treinos":
+elif st.session_state.menu_escolhido == "Montagem de Treinos":
     st.title("Alpha Iron 2.0 — Workout Builder & Editor")
     st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume.")
     
@@ -556,7 +565,7 @@ elif menu_opcao == "Montagem de Treinos":
             
             col1, col2 = st.columns([1.3, 1])
             lista_blocos_do_dia = []
-            m_input_atual = "" # Para capturar o WOD isolado
+            m_input_atual = ""
             
             with col1:
                 st.markdown("### Session Structure (60 min)")
@@ -671,7 +680,6 @@ elif menu_opcao == "Montagem de Treinos":
                 eh_especial = ("HYROX" in day_info["focus"] or "ATHX" in day_info["focus"])
                 iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
                 
-                # Cálculo do Alpha WOD Load específico do WOD isolado
                 tm_wod_val = int(t_m) if 't_m' in locals() and str(t_m).isdigit() else 15
                 alpha_wod_score = calcular_alpha_wod_load(m_input_atual, tm_wod_val)
 
@@ -685,7 +693,6 @@ elif menu_opcao == "Montagem de Treinos":
                         st.success(f"Duration: {total_time} min / 60 min")
 
                 with col_metric2:
-                    # 1. INDICADOR DO IACS DIÁRIO (MANTIDO EXATAMENTE COMO ESTAVA)
                     if iacs_dia <= 10:
                         st.info(f"Daily Alpha Load (IACS): {iacs_dia} pts (Recovery)")
                     elif iacs_dia <= 20:
@@ -695,7 +702,6 @@ elif menu_opcao == "Montagem de Treinos":
                     else:
                         st.error(f"Daily Alpha Load (IACS): {iacs_dia} pts (Shock Session)")
 
-                    # 2. NOVO INDICADOR: ALPHA WOD LOAD (EXCLUSIVO PARA O WOD)
                     if alpha_wod_score <= 8:
                         st.info(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Recovery)")
                     elif alpha_wod_score <= 18:
@@ -731,7 +737,6 @@ elif menu_opcao == "Montagem de Treinos":
 
     salvar_treinos_disco(dados_para_salvar)
 
-    # --- CÁLCULO SEMANAL ---
     vol_usado_semana = extrair_volume_acumulado_estruturado(lista_blocos_semana_acumulados)
 
     tabela_volume = pd.DataFrame({
@@ -781,7 +786,7 @@ elif menu_opcao == "Montagem de Treinos":
 # ==========================================
 # TELAS 4, 5, 6, 7: BIBLIOTECAS E CONFIGURAÇÕES
 # ==========================================
-elif menu_opcao == "Biblioteca de WODs":
+elif st.session_state.menu_escolhido == "Biblioteca de WODs":
     st.title("Biblioteca de WODs Alpha")
     st.markdown("Consulte e reutilize os principais WODs e benchmarks cadastrados na metodologia.")
     
@@ -794,7 +799,7 @@ elif menu_opcao == "Biblioteca de WODs":
     ]
     st.table(pd.DataFrame(wods_exemplos))
 
-elif menu_opcao == "Biblioteca de Exercícios":
+elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
     st.title("Biblioteca de Exercícios & Padrões")
     st.markdown("Consulta rápida dos padrões de movimento monitorados pelo IACS (MCVS).")
     
@@ -807,7 +812,7 @@ elif menu_opcao == "Biblioteca de Exercícios":
     ]
     st.table(pd.DataFrame(exercicios_db))
 
-elif menu_opcao == "Treinos Salvos":
+elif st.session_state.menu_escolhido == "Treinos Salvos":
     st.title("Histórico de Treinos Salvos")
     st.markdown("Visualize o conteúdo armazenado no banco de dados local em tempo real (`treinos_salvos.json`).")
     
@@ -816,7 +821,7 @@ elif menu_opcao == "Treinos Salvos":
     else:
         st.info("Nenhum treino salvo no momento. Utilize a aba de montagem para registrar dados.")
 
-elif menu_opcao == "Configurações":
+elif st.session_state.menu_escolhido == "Configurações":
     st.title("Configurações do Sistema")
     st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0.")
     
