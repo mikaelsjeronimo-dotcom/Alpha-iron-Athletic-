@@ -254,9 +254,11 @@ def obter_metas_volume(bloco_sel, semana_sel):
 
 metas = obter_metas_volume(bloco, semana)
 
-# --- CÁLCULO DE VOLUME ---
+# --- CÁLCULO DE VOLUME (SUPORTE UNIVERSAL: LPO + FORTALECIMENTO 4X12) ---
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
+    
+    ultimo_exercicio_contexto = ""
     
     for item in lista_blocos_dados:
         texto = item.get("texto", "").strip()
@@ -267,8 +269,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
             
         linhas = [l.strip() for l in texto.split("\n") if l.strip()]
         texto_low = texto.lower()
-        is_emom = "emom" in texto_low
-        is_amrap = "amrap" in texto_low
+        is_emom = "emom" in texto_low or "e90s" in texto_low or "e90" in texto_low
         
         num_rounds = 1
         for l in linhas:
@@ -277,75 +278,69 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                 num_rounds = int(m_rnds.group(1))
                 break
 
-        linhas_ex = []
-        for l in linhas:
-            l_low = l.lower()
-            if any(k in l_low for k in ["rx:", "scaled:", "emom", "amrap", "for time", "cap "]):
-                continue
-            if " or " in l_low:
-                l = l_low.split(" or ")[0]
-            linhas_ex.append(l)
-
-        qtd_exercicios = len(linhas_ex) if len(linhas_ex) > 0 else 1
-        multiplicador = 1
-        if is_emom and tempo_minutos > 0:
-            multiplicador = max(1, tempo_minutos // qtd_exercicios)
-        elif is_amrap and tempo_minutos > 0:
-            multiplicador = max(1, tempo_minutos // 3)
-        elif num_rounds > 1:
-            multiplicador = num_rounds
-
-        for linha in linhas_ex:
-            linha_limpa = linha.lower().strip()
-            if not linha_limpa or "rm " in linha_limpa or "rm" in linha_limpa:
-                continue
-
-            linha_sem_prefixo = re.sub(r'^(?:min(?:uto)?\s*\d+|st\d+|station\s*\d+|\d+[\.\-\)]\s*)', '', linha_limpa).strip()
-
-            if "run" in linha_sem_prefixo or "corrida" in linha_sem_prefixo or "km" in linha_sem_prefixo:
-                m_metros = re.findall(r'(\d+)\s*m\b', linha_sem_prefixo)
-                if m_metros:
-                    vol["Run"] += (sum([int(m) for m in m_metros]) / 1000.0) * multiplicador
-                m_kms = re.findall(r'(\d+(?:\.\d+)?)\s*km\b', linha_sem_prefixo)
-                if m_kms:
-                    vol["Run"] += sum([float(k) for k in m_kms]) * multiplicador
-
-            reps_base = 0
-            m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_sem_prefixo)
-            if m_mult:
-                for s, r in m_mult:
-                    reps_base += int(s) * int(r)
+        if is_emom and num_rounds == 1 and tempo_minutos > 0:
+            if "e90" in texto_low or "90s" in texto_low:
+                num_rounds = max(1, (tempo_minutos * 60) >> 1) # ~90s por round
             else:
-                esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_sem_prefixo)
-                if esquema_hifen:
-                    for a, b, c in esquema_hifen:
-                        reps_base += int(a) + int(b) + int(c)
-                else:
-                    nums = re.findall(r'\b(\d+)\b', linha_sem_prefixo)
-                    if nums:
-                        reps_encontradas = [int(n) for n in nums if int(n) <= 300]
-                        if reps_encontradas:
-                            reps_base = reps_encontradas[0]
+                num_rounds = tempo_minutos
 
-            if reps_base == 0:
+        for linha in linhas:
+            linha_limpa = linha.lower().strip()
+            if not linha_limpa:
+                continue
+                
+            if any(k in linha_limpa for k in ["rx:", "scaled:", "emom", "amrap", "for time", "cap ", "e90"]):
                 continue
 
-            is_bmu = any(k in linha_sem_prefixo for k in ["bmu", "bar muscle up", "bar muscle-up", "muscle up", "rmu"])
-            reps_totais = reps_base if is_bmu else reps_base * multiplicador
+            reps_calculadas = 0
 
-            if any(k in linha_sem_prefixo for k in ["squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", "lunge", "lunges", "passada", "pistol", "squat clean", "squat snatch", "front squat", "back squat", "ohs"]):
+            # 1. Tenta formato LPO com percentual (ex: 40%-3 ou 60%-3(2))
+            m_perc_reps = re.search(r'(\d+)%\s*-\s*(\d+)(?:\((\d+)\))?', linha_limpa)
+            if m_perc_reps:
+                reps_por_serie = int(m_perc_reps.group(2))
+                multiplicador_series = int(m_perc_reps.group(3)) if m_perc_reps.group(3) else 1
+                reps_calculadas = reps_por_serie * multiplicador_series
+            else:
+                # 2. Tenta formato tradicional de musculação / fortalecimento (ex: 4x12, 3x10)
+                m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_limpa)
+                if m_mult:
+                    for s, r in m_mult:
+                        reps_calculadas += int(s) * int(r)
+                else:
+                    # 3. Tenta esquemas em hífen (ex: 21-15-9)
+                    esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_limpa)
+                    if esquema_hifen:
+                        for a, b, c in esquema_hifen:
+                            reps_calculadas += int(a) + int(b) + int(c)
+                    else:
+                        nums = re.findall(r'\b(\d+)\b', linha_limpa)
+                        if nums:
+                            reps_encontradas = [int(n) for n in nums if int(n) <= 300]
+                            if reps_encontradas:
+                                reps_calculadas = reps_encontradas[0]
+
+            if reps_calculadas == 0:
+                ultimo_exercicio_contexto = linha_limpa
+                continue
+
+            alvo_texto = f"{ultimo_exercicio_contexto} {linha_limpa}"
+
+            is_bmu = any(k in alvo_texto for k in ["bmu", "bar muscle up", "bar muscle-up", "muscle up", "rmu"])
+            reps_totais = reps_calculadas * num_rounds if not is_emom else reps_calculadas
+
+            if any(k in alvo_texto for k in ["squat", "agacho", "agachamento", "thruster", "wall ball", "wallball", "lunge", "lunges", "passada", "pistol", "squat clean", "squat snatch", "front squat", "back squat", "ohs", "balance"]):
                 vol["Squat"] += reps_totais
-            if any(k in linha_sem_prefixo for k in ["deadlift", "terra", "rdl", "snatch", "clean", "swing", "good morning", "hip thrust"]):
+            if any(k in alvo_texto for k in ["deadlift", "terra", "rdl", "snatch", "clean", "swing", "good morning", "hip thrust", "extensora", "flexora"]):
                 vol["Hinge"] += reps_totais
-            if any(k in linha_sem_prefixo for k in ["push", "press", "jerk", "thruster", "hspu", "dip", "dips", "bench", "flexao", "flexão", "supino", "wall ball", "wallball"]):
+            if any(k in alvo_texto for k in ["push", "press", "jerk", "thruster", "hspu", "dip", "dips", "bench", "flexao", "flexão", "supino", "wall ball", "wallball", "desenvolvimento"]):
                 vol["Push"] += reps_totais
-            if is_bmu or any(k in linha_sem_prefixo for k in ["pull", "pullup", "pull-up", "c2b", "chest to bar", "row", "remada", "rope climb", "puxada"]):
+            if is_bmu or any(k in alvo_texto for k in ["pull", "pullup", "pull-up", "c2b", "chest to bar", "row", "remada", "rope climb", "puxada", "pulldown"]):
                 vol["Pull"] += reps_totais
-            if any(k in linha_sem_prefixo for k in ["toes to bar", "ttb", "knees to elbow", "kte", "sit up", "situp", "v-up", "hollow", "plank", "prancha", "l-sit", "abmat", "ghd"]):
+            if any(k in alvo_texto for k in ["toes to bar", "ttb", "knees to elbow", "kte", "sit up", "situp", "v-up", "hollow", "plank", "prancha", "l-sit", "abmat", "ghd", "abdominal"]):
                 vol["Core"] += reps_totais
-            if any(k in linha_sem_prefixo for k in ["snatch", "arranco", "snatch balance"]):
+            if any(k in alvo_texto for k in ["snatch", "arranco", "snatch balance"]):
                 vol["Snatch"] += reps_totais
-            if any(k in linha_sem_prefixo for k in ["clean", "jerk", "arremesso", "clean & jerk", "clean and jerk"]):
+            if any(k in alvo_texto for k in ["clean", "jerk", "arremesso", "clean & jerk", "clean and jerk"]):
                 vol["Clean & Jerk"] += reps_totais
 
     return vol
@@ -799,4 +794,3 @@ elif menu_opcao == "Configurações":
     
     if st.button("Salvar Configurações"):
         st.success("Configurações atualizadas com sucesso!")
-
