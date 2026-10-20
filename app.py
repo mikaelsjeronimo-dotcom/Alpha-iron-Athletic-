@@ -181,9 +181,6 @@ carregar_logo_sidebar()
 if "menu_escolhido" not in st.session_state:
     st.session_state.menu_escolhido = "Início (Dashboard)"
 
-# --- MENU LATERAL DE NAVEGAÇÃO PROFISSIONAL ---
-st.sidebar.markdown("### Menu Principal")
-
 opcoes_menu = [
     "Início (Dashboard)",
     "Programação Semanal",
@@ -194,19 +191,19 @@ opcoes_menu = [
     "Configurações"
 ]
 
-# Sincroniza o rádio com o session_state
+def atualizar_menu():
+    st.session_state.menu_escolhido = st.session_state.radio_navegacao
+
+# --- MENU LATERAL DE NAVEGAÇÃO PROFISSIONAL ---
+st.sidebar.markdown("### Menu Principal")
 menu_opcao = st.sidebar.radio(
     "Navegação",
     opcoes_menu,
-    index=opcoes_menu.index(st.session_state.menu_escolhido) if st.session_state.menu_escolhido in opcoes_menu else 0,
+    index=opcoes_menu.index(st.session_state.menu_escolhido),
     label_visibility="collapsed",
-    key="radio_navegacao"
+    key="radio_navegacao",
+    on_change=atualizar_menu
 )
-
-# Atualiza o estado se o usuário clicou no menu lateral
-if menu_opcao != st.session_state.menu_escolhido:
-    st.session_state.menu_escolhido = menu_opcao
-    st.rerun()
 
 st.sidebar.markdown("---")
 
@@ -434,7 +431,7 @@ dias_semana = [
 treinos_salvos = carregar_treinos_salvos()
 
 # ==========================================
-# TELA 1: INÍCIO (DASHBOARD)
+# ROTEAMENTO DE TELAS COM BASE NO SESSION STATE
 # ==========================================
 if st.session_state.menu_escolhido == "Início (Dashboard)":
     st.title("Alpha Iron Athletics — Painel Principal")
@@ -486,9 +483,6 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
     })
     st.table(df_dash_vol)
 
-# ==========================================
-# TELA 2: PROGRAMAÇÃO SEMANAL DEDICADA
-# ==========================================
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
     st.markdown("Consulte de forma limpa e objetiva o planejamento completo dos treinos de toda a semana.")
@@ -532,9 +526,6 @@ elif st.session_state.menu_escolhido == "Programação Semanal":
         st.markdown(f"**Main Block / MetCon ({m_t} min):**")
         st.code(m_txt, language="text")
 
-# ==========================================
-# TELA 3: MONTAGEM E EDIÇÃO DE TREINOS
-# ==========================================
 elif st.session_state.menu_escolhido == "Montagem de Treinos":
     st.title("Alpha Iron 2.0 — Workout Builder & Editor")
     st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume.")
@@ -783,9 +774,6 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
     if st.button("Save & Export Weekly Programming"):
         st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
 
-# ==========================================
-# TELAS 4, 5, 6, 7: BIBLIOTECAS E CONFIGURAÇÕES
-# ==========================================
 elif st.session_state.menu_escolhido == "Biblioteca de WODs":
     st.title("Biblioteca de WODs Alpha")
     st.markdown("Consulte e reutilize os principais WODs e benchmarks cadastrados na metodologia.")
