@@ -254,10 +254,9 @@ def obter_metas_volume(bloco_sel, semana_sel):
 
 metas = obter_metas_volume(bloco, semana)
 
-# --- CÁLCULO DE VOLUME (SUPORTE UNIVERSAL: LPO + FORTALECIMENTO 4X12) ---
+# --- CÁLCULO DE VOLUME UNIVERSAL (LPO + 4X12) ---
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
-    
     ultimo_exercicio_contexto = ""
     
     for item in lista_blocos_dados:
@@ -280,34 +279,27 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
 
         if is_emom and num_rounds == 1 and tempo_minutos > 0:
             if "e90" in texto_low or "90s" in texto_low:
-                num_rounds = max(1, (tempo_minutos * 60) >> 1) # ~90s por round
+                num_rounds = max(1, (tempo_minutos * 60) >> 1)
             else:
                 num_rounds = tempo_minutos
 
         for linha in linhas:
             linha_limpa = linha.lower().strip()
-            if not linha_limpa:
-                continue
-                
-            if any(k in linha_limpa for k in ["rx:", "scaled:", "emom", "amrap", "for time", "cap ", "e90"]):
+            if not linha_limpa or any(k in linha_limpa for k in ["rx:", "scaled:", "emom", "amrap", "for time", "cap ", "e90"]):
                 continue
 
             reps_calculadas = 0
-
-            # 1. Tenta formato LPO com percentual (ex: 40%-3 ou 60%-3(2))
             m_perc_reps = re.search(r'(\d+)%\s*-\s*(\d+)(?:\((\d+)\))?', linha_limpa)
             if m_perc_reps:
                 reps_por_serie = int(m_perc_reps.group(2))
                 multiplicador_series = int(m_perc_reps.group(3)) if m_perc_reps.group(3) else 1
                 reps_calculadas = reps_por_serie * multiplicador_series
             else:
-                # 2. Tenta formato tradicional de musculação / fortalecimento (ex: 4x12, 3x10)
                 m_mult = re.findall(r'(\d+)\s*x\s*(\d+)', linha_limpa)
                 if m_mult:
                     for s, r in m_mult:
                         reps_calculadas += int(s) * int(r)
                 else:
-                    # 3. Tenta esquemas em hífen (ex: 21-15-9)
                     esquema_hifen = re.findall(r'(\d+)-(\d+)-(\d+)', linha_limpa)
                     if esquema_hifen:
                         for a, b, c in esquema_hifen:
@@ -324,7 +316,6 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                 continue
 
             alvo_texto = f"{ultimo_exercicio_contexto} {linha_limpa}"
-
             is_bmu = any(k in alvo_texto for k in ["bmu", "bar muscle up", "bar muscle-up", "muscle up", "rmu"])
             reps_totais = reps_calculadas * num_rounds if not is_emom else reps_calculadas
 
@@ -355,6 +346,36 @@ def calcular_iacs_de_vol(vol_dict, eh_especial=False):
     if eh_especial:
         score += 15
     return int(score)
+
+# --- CÁLCULO CIENTÍFICO DA INTENSIDADE DO WOD ISOLADO (ALPHA WOD LOAD) ---
+def calcular_alpha_wod_load(texto_wod, tempo_wod):
+    if not texto_wod or not texto_wod.strip():
+        return 0
+    
+    txt_low = texto_wod.lower()
+    vol_wod = extrair_volume_acumulado_estruturado([{"texto": texto_wod, "tempo": tempo_wod}])
+    
+    # Soma total de volume mecânico do WOD
+    volume_total_reps = sum(vol_wod.values()) - vol_wod["Run"]
+    quilometragem_run = vol_wod["Run"]
+    
+    # Fator de densidade metabólica com base no tempo de exposição e modalidade
+    fator_modalidade = 1.0
+    if "for time" in txt_low:
+        fator_modalidade = 1.35 # Estímulo máximo anaerobic-aerobic power
+    elif "amrap" in txt_low:
+        fator_modalidade = 1.25 # Alta densidade sob fadiga acumulada
+    elif "emom" in txt_low or "e90" in txt_low:
+        fator_modalidade = 1.10 # Pacing intervalado
+    
+    # Pontuação base científica (Volume * Densidade + Corrida ponderada)
+    score_wod = (volume_total_reps * 0.15 + quilometragem_run * 4.0) * fator_modalidade
+    
+    # Se houver movimentos de alta complexidade técnica (Gymnastics avançada ou LPO no WOD)
+    if any(k in txt_low for k in ["muscle-up", "bmu", "hspu", "snatch", "clean & jerk", "rope climb"]):
+        score_wod *= 1.2
+        
+    return int(max(score_wod, 5 if len(txt_low) > 5 else 0))
 
 METODOLOGIA_BASE = {
     "Block 1": {
@@ -387,10 +408,6 @@ def gerar_todas_sugestoes(bloco_sel, semana_sel, strength_txt, skill_txt, wod_tx
     key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1]
     key_week = semana_sel.split(" ")[0] + " " + semana_sel.split(" ")[1]
     base_bloco = METODOLOGIA_BASE.get(key_block, {}).get(key_week, {"strength": "Strength", "skill": "Skill", "wod": "WOD"})
-    
-    s_usada = strength_txt if len(strength_txt.strip()) > 5 else base_bloco["strength"]
-    l_usada = skill_txt if len(skill_txt.strip()) > 5 else base_bloco["skill"]
-    m_usada = wod_txt if len(wod_txt.strip()) > 5 else base_bloco["wod"]
     
     df_sug = pd.DataFrame({
         "Session Block": ["1. Warm-Up", "2. Strength", "3. Skill", "4. WOD", "5. Accessory", "6. Mobility"],
@@ -539,6 +556,7 @@ elif menu_opcao == "Montagem de Treinos":
             
             col1, col2 = st.columns([1.3, 1])
             lista_blocos_do_dia = []
+            m_input_atual = "" # Para capturar o WOD isolado
             
             with col1:
                 st.markdown("### Session Structure (60 min)")
@@ -550,10 +568,9 @@ elif menu_opcao == "Montagem de Treinos":
                     with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_hy_w_{i}")
                     with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic Mobility"), height=75, key=f"hy_w_{i}")
                     
-                    s_input, l_input = "", ""
                     c3, c4 = st.columns([1, 4])
                     with c3: t_m = st.text_input("Main (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "40")), key=f"t_hy_m_{i}")
-                    with c4: m_input = st.text_area("HYROX Main Block", treinos_salvos.get(f"{day_name}_m", "Running + Stations"), height=110, key=f"hy_m_{i}")
+                    with c4: m_input_atual = st.text_area("HYROX Main Block", treinos_salvos.get(f"{day_name}_m", "Running + Stations"), height=110, key=f"hy_m_{i}")
                     
                     c5, c6 = st.columns([1, 4])
                     with c5: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "10")), key=f"t_hy_r_{i}")
@@ -564,8 +581,8 @@ elif menu_opcao == "Montagem de Treinos":
                     tr_val = int(t_r) if t_r.isdigit() else 0
                     total_time = tw_val + tm_val + tr_val
 
-                    lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": m_input, "tempo": tm_val}]
-                    dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
+                    lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": m_input_atual, "tempo": tm_val}]
+                    dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input_atual, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
 
                 elif day_name == "Friday":
                     st.info("ATHX Session: Fixed Structure")
@@ -583,7 +600,7 @@ elif menu_opcao == "Montagem de Treinos":
 
                     c7, c8 = st.columns([1, 4])
                     with c7: t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_athx_m_{i}")
-                    with c8: m_input = st.text_area("MetCon X Descrição", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"athx_m_{i}")
+                    with c8: m_input_atual = st.text_area("MetCon X Descrição", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"athx_m_{i}")
 
                     c9, c10 = st.columns([1, 4])
                     with c9: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "5")), key=f"t_athx_r_{i}")
@@ -596,8 +613,8 @@ elif menu_opcao == "Montagem de Treinos":
                     tr_val = int(t_r) if t_r.isdigit() else 0
                     total_time = tw_val + ts_val + te_val + tm_val + tr_val
 
-                    lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": s_input, "tempo": ts_val}, {"texto": l_input, "tempo": te_val}, {"texto": m_input, "tempo": tm_val}]
-                    dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input, f"{day_name}_t_e": te_val, f"{day_name}_e": l_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
+                    lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": s_input, "tempo": ts_val}, {"texto": l_input, "tempo": te_val}, {"texto": m_input_atual, "tempo": tm_val}]
+                    dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input, f"{day_name}_t_e": te_val, f"{day_name}_e": l_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input_atual, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
 
                 else:
                     c1, c2 = st.columns([1, 4])
@@ -614,7 +631,7 @@ elif menu_opcao == "Montagem de Treinos":
 
                     c7, c8 = st.columns([1, 4])
                     with c7: t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_cf_m_{i}")
-                    with c8: m_input = st.text_area("4. WOD", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"cf_wod_{i}")
+                    with c8: m_input_atual = st.text_area("4. WOD", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"cf_wod_{i}")
 
                     c9, c10 = st.columns([1, 4])
                     with c9: t_a = st.text_input("Acc (min)", value=str(treinos_salvos.get(f"{day_name}_t_a", "5")), key=f"t_cf_a_{i}")
@@ -635,7 +652,7 @@ elif menu_opcao == "Montagem de Treinos":
 
                     lista_blocos_do_dia = [
                         {"texto": w_input, "tempo": tw_val}, {"texto": s_input, "tempo": ts_val},
-                        {"texto": l_input, "tempo": tl_val}, {"texto": m_input, "tempo": tm_val},
+                        {"texto": l_input, "tempo": tl_val}, {"texto": m_input_atual, "tempo": tm_val},
                         {"texto": a_input, "tempo": ta_val}
                     ]
                     
@@ -643,7 +660,7 @@ elif menu_opcao == "Montagem de Treinos":
                         f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input,
                         f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input,
                         f"{day_name}_t_l": tl_val, f"{day_name}_l": l_input,
-                        f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input,
+                        f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input_atual,
                         f"{day_name}_t_a": ta_val, f"{day_name}_a": a_input,
                         f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input
                     })
@@ -653,6 +670,10 @@ elif menu_opcao == "Montagem de Treinos":
                 vol_dia = extrair_volume_acumulado_estruturado(lista_blocos_do_dia)
                 eh_especial = ("HYROX" in day_info["focus"] or "ATHX" in day_info["focus"])
                 iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
+                
+                # Cálculo do Alpha WOD Load específico do WOD isolado
+                tm_wod_val = int(t_m) if 't_m' in locals() and str(t_m).isdigit() else 15
+                alpha_wod_score = calcular_alpha_wod_load(m_input_atual, tm_wod_val)
 
                 st.markdown("---")
                 col_metric1, col_metric2 = st.columns(2)
@@ -664,6 +685,7 @@ elif menu_opcao == "Montagem de Treinos":
                         st.success(f"Duration: {total_time} min / 60 min")
 
                 with col_metric2:
+                    # 1. INDICADOR DO IACS DIÁRIO (MANTIDO EXATAMENTE COMO ESTAVA)
                     if iacs_dia <= 10:
                         st.info(f"Daily Alpha Load (IACS): {iacs_dia} pts (Recovery)")
                     elif iacs_dia <= 20:
@@ -672,6 +694,16 @@ elif menu_opcao == "Montagem de Treinos":
                         st.warning(f"Daily Alpha Load (IACS): {iacs_dia} pts (High Intensity)")
                     else:
                         st.error(f"Daily Alpha Load (IACS): {iacs_dia} pts (Shock Session)")
+
+                    # 2. NOVO INDICADOR: ALPHA WOD LOAD (EXCLUSIVO PARA O WOD)
+                    if alpha_wod_score <= 8:
+                        st.info(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Recovery)")
+                    elif alpha_wod_score <= 18:
+                        st.success(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Moderate)")
+                    elif alpha_wod_score <= 30:
+                        st.warning(f"Alpha WOD Load: {alpha_wod_score} pts (WOD High Intensity)")
+                    else:
+                        st.error(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Anaerobic Shock)")
 
             with col2:
                 st.markdown("### Scaling Chart (RX / INT / BEG / MASTERS)")
@@ -685,7 +717,7 @@ elif menu_opcao == "Montagem de Treinos":
                 st.markdown("### Intelligence Suggestions")
                 s_val = s_input if 's_input' in locals() else ""
                 l_val = l_input if 'l_input' in locals() else ""
-                m_val = m_input if 'm_input' in locals() else ""
+                m_val = m_input_atual if 'm_input_atual' in locals() else ""
                 
                 df_todas_sugestoes = gerar_todas_sugestoes(bloco, semana, s_val, l_val, m_val)
                 st.table(df_todas_sugestoes)
