@@ -5,6 +5,8 @@ import glob
 import base64
 import re
 import json
+import urllib.request
+import urllib.error
 
 st.set_page_config(
     page_title="Alpha Iron Athletics 2.0 — Sistema de Gestão", 
@@ -307,6 +309,28 @@ def obter_metas_volume(bloco_sel, semana_sel):
 
 metas = obter_metas_volume(bloco, semana)
 
+def chamar_gemini_direto(prompt_texto):
+    api_key = st.session_state.get("gemini_api_key", "")
+    if not api_key and "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    
+    if not api_key:
+        raise Exception("Chave da API do Gemini não configurada.")
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt_texto}]}]
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    
+    with urllib.request.urlopen(req) as response:
+        res_json = json.loads(response.read().decode("utf-8"))
+        try:
+            return res_json["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            return str(res_json)
+
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
     ultimo_exercicio_contexto = ""
@@ -409,40 +433,12 @@ def calcular_alpha_wod_load(texto_wod, tempo_wod):
     return int(max(score_wod, 5 if len(txt_low) > 5 else 0))
 
 def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", treinos_Atuais_semana={}):
-    api_key = st.session_state.get("gemini_api_key", "")
-    if not api_key and "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-
-    if not api_key:
-        return pd.DataFrame({
-            "Session Block": ["Status da IA", "Aviso"],
-            "Recommended Programming": ["Chave da API do Gemini não configurada.", "Insira sua chave na aba Configurações ou nos Secrets."]
-        })
-
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        
         resumo_semana_str = ""
         if treinos_Atuais_semana:
             for k, v in treinos_Atuais_semana.items():
                 if v and str(v).strip():
                     resumo_semana_str += f"- {k}: {v}\n"
-
-        instrucoes_especificas_dia = ""
-        if dia_nome == "Monday":
-            instrucoes_especificas_dia = "Foco em HYROX: Simulação de prova, corrida intervalada (Run), SkiErg, Sled Push/Pull, Burpee Broad Jumps e estações funcionais de endurance."
-        elif dia_nome in ["Tuesday", "Thursday"]:
-            arma = "Snatch" if dia_nome == "Tuesday" else "Clean"
-            instrucoes_especificas_dia = f"Foco em CrossFit Strength & LPO ({arma}): Trabalho de força específico para {arma}, técnica de LPO refinada, complex de {arma} e WOD focado em transferência para o {arma}."
-        elif dia_nome == "Wednesday":
-            instrucoes_especificas_dia = "Foco em CrossFit Gymnastics: Progressão técnica estruturada de 4 semanas (ex: HSPU, Pull-ups, Toes-to-Bar ou Muscle-ups), economia de movimento e resistência muscular localizada."
-        elif dia_nome == "Friday":
-            instrucoes_especificas_dia = "Foco em ATHX / GHX: Formato híbrido de alta performance com esteções de potência anaeróbia, calistenia avançada e endurance cardiovascular."
-        elif dia_nome == "Saturday":
-            instrucoes_especificas_dia = "Foco em Community WOD: Treino em duplas ou equipes, dinâmico, desafiador e escalável para todos os níveis da comunidade."
-        elif dia_nome == "Sunday":
-            instrucoes_especificas_dia = "Foco em Benchmark / Hero WOD: Testes oficiais (The Girls, Heroes ou WODs de referência) com análise de pacing."
 
         prompt = f"""
         Você é o head coach especialista em periodização de CrossFit, LPO, HYROX, ATHX e MetCon da metodologia oficial Alpha Iron Athletics.
@@ -450,27 +446,12 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", tre
         - Fase de Periodização: {bloco_sel}
         - Semana do Ciclo: {semana_sel}
         - Dia Sendo Montado: {dia_nome}
-        - Foco Obrigatório do Dia: {focus_dia} ({instrucoes_especificas_dia})
-        
-        HISTÓRICO DE TREINOS JÁ CADASTRados na semana:
-        {resumo_semana_str if resumo_semana_str else "Nenhum outro treino cadastrado ainda nesta semana."}
-        
-        DIRETRIZES TÉCNICAS RIGOROSAS:
-        1. O treino sugerido DEVE respeitar rigorosamente o foco de {dia_nome} ({focus_dia}). Nunca sugira treino genérico ou fora do contexto daquele dia.
-        2. Incorpore as melhores tendências e diretrizes científicas mundiais da modalidade ({focus_dia}), alinhadas à fase ({bloco_sel} / {semana_sel}).
-        3. Divida a sugestão exatamente nestes 6 blocos padronizados do sistema:
-           1. Warm-Up
-           2. Strength
-           3. Skill
-           4. WOD
-           5. Accessory
-           6. Mobility
+        - Foco Obrigatório do Dia: {focus_dia}
         
         Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo ou markdown fora do JSON.
         """
-        model = genai.GenerativeModel("gemini-2.5-flash") if hasattr(genai, "GenerativeModel") else genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
-        txt = response.text.strip()
+        txt_resp = chamar_gemini_direto(prompt)
+        txt = txt_resp.strip()
         if txt.startswith("```json"):
             txt = txt[7:]
         if txt.endswith("```"):
@@ -523,27 +504,6 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
         if st.button("Treinos Salvos"):
             st.session_state.menu_escolhido = "Treinos Salvos"
             st.rerun()
-
-    st.markdown("---")
-    st.subheader("Resumo de Volume da Semana")
-    
-    lista_temp = []
-    for d_info in dias_semana:
-        d_n = d_info["day"]
-        w_t = treinos_salvos.get(f"{d_n}_t_w", 10)
-        w_txt = treinos_salvos.get(f"{d_n}_w", "")
-        m_t = treinos_salvos.get(f"{d_n}_t_m", 15)
-        m_txt = treinos_salvos.get(f"{d_n}_m", "")
-        lista_temp.append({"texto": w_txt, "tempo": w_t})
-        lista_temp.append({"texto": m_txt, "tempo": m_t})
-        
-    vol_resumo = extrair_volume_acumulado_estruturado(lista_temp)
-    df_dash_vol = pd.DataFrame({
-        "Padrão de Movimento": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run"],
-        "Meta": [metas["Squat"], metas["Hinge"], metas["Push"], metas["Pull"], metas["Core"], metas["Snatch"], metas["Clean & Jerk"], f"{metas['Run']} km"],
-        "Programado": [vol_resumo["Squat"], vol_resumo["Hinge"], vol_resumo["Push"], vol_resumo["Pull"], vol_resumo["Core"], vol_resumo["Snatch"], vol_resumo["Clean & Jerk"], f"{round(vol_resumo['Run'], 2)} km"]
-    })
-    st.table(df_dash_vol)
 
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
@@ -808,17 +768,10 @@ elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
         else:
             with st.spinner("Conectando com o Gemini..."):
                 try:
-                    import google.generativeai as genai
-                    key_real = st.session_state.get("gemini_api_key", "")
-                    if not key_real and "GEMINI_API_KEY" in st.secrets:
-                        key_real = st.secrets["GEMINI_API_KEY"]
-                        
-                    genai.configure(api_key=key_real)
-                    model = genai.GenerativeModel("gemini-2.5-flash") if hasattr(genai, "GenerativeModel") else genai.GenerativeModel("gemini-1.5-flash")
-                    response = model.generate_content(mensagem_teste)
+                    resposta_ia = chamar_gemini_direto(mensagem_teste)
                     st.success("🎉 Resposta recebida com sucesso da API!")
                     st.markdown("### Resposta do Gemini:")
-                    st.info(response.text)
+                    st.info(resposta_ia)
                 except Exception as e:
                     st.error(f"❌ Erro ao comunicar com a API do Gemini:")
                     st.code(str(e), language="text")
