@@ -215,10 +215,141 @@ def carregar_treinos_salvos():
             return {}
     return {}
 
+def gerar_arquivo_wod_tv(dados_treinos, bloco_atual, semana_atual):
+    dias_semana_full = [
+        ("Monday", "Segunda-feira — HYROX"),
+        ("Tuesday", "Terça-feira — CrossFit (Strength / LPO)"),
+        ("Wednesday", "Quarta-feira — CrossFit (Gymnastics)"),
+        ("Thursday", "Quinta-feira — CrossFit (Strength / LPO)"),
+        ("Friday", "Sexta-feira — ATHX"),
+        ("Saturday", "Sábado — Community WOD"),
+        ("Sunday", "Domingo — Benchmark / Hero WOD")
+    ]
+    
+    html_cards = ""
+    for d, nome_dia in dias_semana_full:
+        w_t = dados_treinos.get(f"{d}_t_w", 10)
+        w_txt = dados_treinos.get(f"{d}_w", "")
+        s_t = dados_treinos.get(f"{d}_t_s", 15)
+        s_txt = dados_treinos.get(f"{d}_s", "")
+        l_t = dados_treinos.get(f"{d}_t_l", 10)
+        l_txt = dados_treinos.get(f"{d}_l", "")
+        m_t = dados_treinos.get(f"{d}_t_m", 15)
+        m_txt = dados_treinos.get(f"{d}_m", "")
+        a_t = dados_treinos.get(f"{d}_t_a", 5)
+        a_txt = dados_treinos.get(f"{d}_a", "")
+        r_t = dados_treinos.get(f"{d}_t_r", 5)
+        r_txt = dados_treinos.get(f"{d}_r", "")
+        e_t = dados_treinos.get(f"{d}_t_e", 15)
+        e_txt = dados_treinos.get(f"{d}_e", "")
+        
+        blocos_html = ""
+        if w_txt:
+            blocos_html += f'<div class="bloco"><strong>1. Warm-Up ({w_t} min):</strong><br>{w_txt.replace("\n", "<br>")}</div>'
+        if s_txt:
+            blocos_html += f'<div class="bloco"><strong>2. Strength ({s_t} min):</strong><br>{s_txt.replace("\n", "<br>")}</div>'
+        if l_txt:
+            blocos_html += f'<div class="bloco"><strong>3. Skill ({l_t} min):</strong><br>{l_txt.replace("\n", "<br>")}</div>'
+        if e_txt:
+            blocos_html += f'<div class="bloco"><strong>Endurance ({e_t} min):</strong><br>{e_txt.replace("\n", "<br>")}</div>'
+        if m_txt:
+            blocos_html += f'<div class="bloco wod-main"><strong>WOD / Main Block ({m_t} min):</strong><br>{m_txt.replace("\n", "<br>")}</div>'
+        if a_txt:
+            blocos_html += f'<div class="bloco"><strong>Accessory ({a_t} min):</strong><br>{a_txt.replace("\n", "<br>")}</div>'
+        if r_txt:
+            blocos_html += f'<div class="bloco"><strong>Mobility ({r_t} min):</strong><br>{r_txt.replace("\n", "<br>")}</div>'
+            
+        if not blocos_html:
+            blocos_html = '<div class="bloco">Nenhum treino cadastrado para este dia.</div>'
+            
+        html_cards += f'''
+        <div class="card">
+            <h2>{nome_dia}</h2>
+            {blocos_html}
+        </div>
+        '''
+
+    html_completo = f'''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="30">
+    <title>Alpha Iron Athletics — WOD TV</title>
+    <style>
+        body {{
+            background-color: #0e1117;
+            color: #f0f2f6;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }}
+        h1 {{
+            color: #00E5FF;
+            text-align: center;
+            font-size: 32px;
+            margin-bottom: 5px;
+        }}
+        .sub {{
+            color: #9ca3af;
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }}
+        .grid {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }}
+        .card {{
+            background-color: #161920;
+            border: 1px solid #2a2f3a;
+            border-radius: 12px;
+            width: 300px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }}
+        .card h2 {{
+            color: #00E5FF;
+            font-size: 20px;
+            margin-top: 0;
+            border-bottom: 2px solid #00E5FF;
+            padding-bottom: 8px;
+        }}
+        .bloco {{
+            background-color: #1f242d;
+            border-left: 4px solid #0051ff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            line-height: 1.4;
+        }}
+        .wod-main {{
+            border-left-color: #00E5FF;
+            background-color: #1a2332;
+        }}
+    </style>
+</head>
+<body>
+    <h1>ALPHA IRON ATHLETICS</h1>
+    <div class="sub">{bloco_atual} | {semana_atual} (Atualização Automática)</div>
+    <div class="grid">
+        {html_cards}
+    </div>
+</body>
+</html>
+'''
+    
+    with open("wod_tv.html", "w", encoding="utf-8") as f:
+        f.write(html_completo)
+
 def salvar_treinos_disco(dados):
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2)
+        # Gera o arquivo HTML da TV automaticamente ao salvar
+        gerar_arquivo_wod_tv(dados, bloco, semana)
     except Exception:
         pass
 
@@ -237,6 +368,7 @@ if "menu_escolhido" not in st.session_state:
 opcoes_menu = [
     "Início (Dashboard)",
     "Programação Semanal",
+    "🖥️ WOD TV (Para a TV)",
     "🧠 Coach Intelligence",
     "Montagem de Treinos",
     "Biblioteca de WODs",
@@ -311,7 +443,6 @@ def obter_metas_volume(bloco_sel, semana_sel):
 metas = obter_metas_volume(bloco, semana)
 
 def chamar_gemini_direto(prompt_texto):
-    """Seleciona um modelo Gemini disponível e chama generateContent."""
     api_key = st.session_state.get("gemini_api_key", "")
     if not api_key:
         try:
@@ -540,13 +671,36 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
             st.session_state.menu_escolhido = "Programação Semanal"
             st.rerun()
     with col_a2:
-        if st.button("Montar / Editar Treinos"):
-            st.session_state.menu_escolhido = "Montagem de Treinos"
+        if st.button("Abrir WOD TV"):
+            st.session_state.menu_escolhido = "🖥️ WOD TV (Para a TV)"
             st.rerun()
     with col_a3:
         if st.button("Treinos Salvos"):
             st.session_state.menu_escolhido = "Treinos Salvos"
             st.rerun()
+
+elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
+    st.title("🖥️ WOD TV — Tela para a TV do Box (LG 42LN5700)")
+    st.markdown("Este painel gera automaticamente uma página super leve em HTML (`wod_tv.html`) compatível com navegadores antigos. Sempre que você altera e salva um treino, a TV atualiza sozinha na parede!")
+    
+    # Garante que o arquivo HTML exista
+    gerar_arquivo_wod_tv(treinos_salvos, bloco, semana)
+    
+    st.info("💡 **Como configurar na sua LG 42LN5700:**
+1. Certifique-se de que o computador onde o Streamlit roda e a TV estão na mesma rede Wi-Fi/cabo.
+2. No navegador antigo da TV, digite o endereço local gerado pelo Streamlit adicionando `/wod_tv.html` ao final (ex: `http://192.168.X.X:8501/wod_tv.html`).
+3. Deixe a aba aberta em tela cheia na TV. O sistema atualizará sozinho a cada 30 segundos após você salvar qualquer treino!")
+
+    st.markdown("---")
+    st.subheader("Pré-visualização do WOD TV Atual:")
+    
+    # Exibe em um iframe interno o wod_tv.html gerado
+    if os.path.exists("wod_tv.html"):
+        with open("wod_tv.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        st.components.v1.html(html_content, height=700, scrolling=True)
+    else:
+        st.warning("Arquivo wod_tv.html ainda não gerado. Vá em 'Montagem de Treinos' e clique em salvar.")
 
 elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
     st.title("🧠 Coach Intelligence")
