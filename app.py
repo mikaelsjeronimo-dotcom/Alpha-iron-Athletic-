@@ -5,8 +5,7 @@ import glob
 import base64
 import re
 import json
-import urllib.request
-import urllib.error
+import google.generativeai as genai
 
 st.set_page_config(
     page_title="Alpha Iron Athletics 2.0 — Sistema de Gestão", 
@@ -247,7 +246,6 @@ opcoes_menu = [
 
 st.sidebar.markdown("### Menu Principal")
 for op in opcoes_menu:
-    is_ativo = (st.session_state.menu_escolhido == op)
     if st.sidebar.button(op, key=f"menu_btn_{op}", use_container_width=True):
         st.session_state.menu_escolhido = op
         st.rerun()
@@ -268,48 +266,7 @@ semana = st.sidebar.selectbox("Periodization Week", [
     "Week 4 - Deload / Benchmark"
 ], key="sel_semana_per")
 
-def obter_metas_volume(bloco_sel, semana_sel):
-    base = {
-        "Squat": 140, "Hinge": 90, "Push": 80, "Pull": 80, 
-        "Core": 100, "Snatch": 45, "Clean & Jerk": 50, "Run": 8.0
-    }
-    if "Block 1" in bloco_sel or "Strength" in bloco_sel:
-        base["Squat"] += 30
-        base["Hinge"] += 20
-    elif "Block 2" in bloco_sel or "Engine" in bloco_sel:
-        base["Run"] += 4.0
-        base["Pull"] += 20
-    elif "Block 3" in bloco_sel or "Gymnastics" in bloco_sel:
-        base["Push"] += 30
-        base["Pull"] += 30
-        base["Core"] += 40
-    elif "Block 4" in bloco_sel or "Weightlifting" in bloco_sel:
-        base["Snatch"] += 25
-        base["Clean & Jerk"] += 30
-        base["Hinge"] += 20
-
-    fator = 1.0
-    if "Progression" in semana_sel or "Week 2" in semana_sel:
-        fator = 1.15
-    elif "Overload" in semana_sel or "Week 3" in semana_sel:
-        fator = 1.30
-    elif "Deload" in semana_sel or "Week 4" in semana_sel:
-        fator = 0.65
-        
-    return {
-        "Squat": int(base["Squat"] * fator),
-        "Hinge": int(base["Hinge"] * fator),
-        "Push": int(base["Push"] * fator),
-        "Pull": int(base["Pull"] * fator),
-        "Core": int(base["Core"] * fator),
-        "Snatch": int(base["Snatch"] * fator),
-        "Clean & Jerk": int(base["Clean & Jerk"] * fator),
-        "Run": round(base["Run"] * fator, 1)
-    }
-
-metas = obter_metas_volume(bloco, semana)
-
-def chamar_gemini_direto(prompt_texto):
+def chamar_gemini_sdk(prompt_texto):
     api_key = st.session_state.get("gemini_api_key", "")
     if not api_key and "GEMINI_API_KEY" in st.secrets:
         api_key = st.secrets["GEMINI_API_KEY"]
@@ -317,20 +274,11 @@ def chamar_gemini_direto(prompt_texto):
     if not api_key:
         raise Exception("Chave da API do Gemini não configurada.")
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt_texto}]}]
-    }
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
-    
-    try:
-        with urllib.request.urlopen(req) as response:
-            res_json = json.loads(response.read().decode("utf-8"))
-            return res_json["candidates"][0]["content"]["parts"][0]["text"]
-    except urllib.error.HTTPError as e:
-        erro_detalhe = e.read().decode("utf-8")
-        raise Exception(f"HTTP Error {e.code}: {erro_detalhe}")
+    genai.configure(api_key=api_key)
+    # Modelo oficial padrão atualizado para o SDK Python
+    model = genai.GenerativeModel('gemini-2.0-flash')
+    response = model.generate_content(prompt_texto)
+    return response.text
 
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
@@ -435,12 +383,6 @@ def calcular_alpha_wod_load(texto_wod, tempo_wod):
 
 def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", treinos_Atuais_semana={}):
     try:
-        resumo_semana_str = ""
-        if treinos_Atuais_semana:
-            for k, v in treinos_Atuais_semana.items():
-                if v and str(v).strip():
-                    resumo_semana_str += f"- {k}: {v}\n"
-
         prompt = f"""
         Você é o head coach especialista em periodização de CrossFit, LPO, HYROX, ATHX e MetCon da metodologia oficial Alpha Iron Athletics.
         CONTEXTO ATUAL DA PROGRAMAÇÃO:
@@ -451,7 +393,7 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", tre
         
         Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo ou markdown fora do JSON.
         """
-        txt_resp = chamar_gemini_direto(prompt)
+        txt_resp = chamar_gemini_sdk(prompt)
         txt = txt_resp.strip()
         if txt.startswith("```json"):
             txt = txt[7:]
@@ -462,7 +404,7 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", tre
     except Exception as e:
         return pd.DataFrame({
             "Session Block": ["Erro na Integração IA", "Detalhe Técnico"],
-            "Recommended Programming": ["Não foi possível conectar ao Gemini via API.", str(e)]
+            "Recommended Programming": ["Não foi possível conectar ao Gemini via SDK oficial.", str(e)]
         })
 
 dias_semana = [
@@ -489,23 +431,6 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
     with col_d3:
         st.metric("Status da Base", "Sincronizado")
 
-    st.markdown("---")
-    st.subheader("Atalhos Rápidos")
-    
-    col_a1, col_a2, col_a3 = st.columns(3)
-    with col_a1:
-        if st.button("Programação Semanal"):
-            st.session_state.menu_escolhido = "Programação Semanal"
-            st.rerun()
-    with col_a2:
-        if st.button("Montar / Editar Treinos"):
-            st.session_state.menu_escolhido = "Montagem de Treinos"
-            st.rerun()
-    with col_a3:
-        if st.button("Treinos Salvos"):
-            st.session_state.menu_escolhido = "Treinos Salvos"
-            st.rerun()
-
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
     st.markdown("Consulte de forma limpa e objetiva o planejamento completo dos treinos de toda a semana.")
@@ -516,7 +441,6 @@ elif st.session_state.menu_escolhido == "Programação Semanal":
     d_name = d_info["day"]
     
     st.markdown(f"### Ficha Técnica: {d_name} ({d_info['focus']})")
-    
     w_t = treinos_salvos.get(f"{d_name}_t_w", 10)
     w_txt = treinos_salvos.get(f"{d_name}_w", "Não cadastrado")
     m_t = treinos_salvos.get(f"{d_name}_t_m", 15)
@@ -524,7 +448,6 @@ elif st.session_state.menu_escolhido == "Programação Semanal":
     
     st.markdown(f"**1. Warm-Up ({w_t} min):**")
     st.code(w_txt, language="text")
-    
     if d_name not in ["Monday", "Friday"]:
         s_t = treinos_salvos.get(f"{d_name}_t_s", 15)
         s_txt = treinos_salvos.get(f"{d_name}_s", "Não cadastrado")
@@ -554,7 +477,6 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
     st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume.")
     
     tabs = st.tabs([d["day"] for d in dias_semana])
-    lista_blocos_semana_acumulados = []
     dados_para_salvar = {}
 
     for i, tab in enumerate(tabs):
@@ -564,71 +486,38 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
         
         with tab:
             st.subheader(f"{day_name} — {day_focus}")
-            
-            with st.expander("Ferramenta de Duplicação Rápida"):
-                col_dup1, col_dup2 = st.columns([2, 1])
-                with col_dup1:
-                    dia_destino = st.selectbox("Copiar programação deste dia para:", [d["day"] for d in dias_semana if d["day"] != day_name], key=f"dup_sel_{i}")
-                with col_dup2:
-                    if st.button("Duplicar Agora", key=f"btn_dup_{i}"):
-                        treinos_salvos[f"{dia_destino}_t_w"] = treinos_salvos.get(f"{day_name}_t_w", 10)
-                        treinos_salvos[f"{dia_destino}_w"] = treinos_salvos.get(f"{day_name}_w", "")
-                        treinos_salvos[f"{dia_destino}_t_m"] = treinos_salvos.get(f"{day_name}_t_m", 15)
-                        treinos_salvos[f"{dia_destino}_m"] = treinos_salvos.get(f"{day_name}_m", "")
-                        salvar_treinos_disco(treinos_salvos)
-                        st.success(f"Treino duplicado com sucesso para {dia_destino}!")
-            
             col1, col2 = st.columns([1.3, 1])
             lista_blocos_do_dia = []
             m_input_atual = ""
             
             with col1:
                 st.markdown("### Session Structure (60 min)")
-                t_s, t_m = 0, 0
-                
                 if day_name == "Monday":
-                    st.info("HYROX Session: Running + Functional Stations")
-                    c1, c2 = st.columns([1, 4])
-                    with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_hy_w_{i}")
-                    with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic Mobility"), height=75, key=f"hy_w_{i}")
-                    
-                    c3, c4 = st.columns([1, 4])
-                    with c3: t_m = st.text_input("Main (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "40")), key=f"t_hy_m_{i}")
-                    with c4: m_input_atual = st.text_area("HYROX Main Block", treinos_salvos.get(f"{day_name}_m", "Running + Stations"), height=110, key=f"hy_m_{i}")
-                    
-                    c5, c6 = st.columns([1, 4])
-                    with c5: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "10")), key=f"t_hy_r_{i}")
-                    with c6: r_input = st.text_area("Mobility Descrição", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=75, key=f"hy_r_{i}")
+                    t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_hy_w_{i}")
+                    w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic Mobility"), height=75, key=f"hy_w_{i}")
+                    t_m = st.text_input("Main (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "40")), key=f"t_hy_m_{i}")
+                    m_input_atual = st.text_area("HYROX Main Block", treinos_salvos.get(f"{day_name}_m", "Running + Stations"), height=110, key=f"hy_m_{i}")
+                    t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "10")), key=f"t_hy_r_{i}")
+                    r_input = st.text_area("Mobility Descrição", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=75, key=f"hy_r_{i}")
                     
                     tw_val = int(t_w) if t_w.isdigit() else 0
                     tm_val = int(t_m) if t_m.isdigit() else 0
                     tr_val = int(t_r) if t_r.isdigit() else 0
                     total_time = tw_val + tm_val + tr_val
-
                     lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": m_input_atual, "tempo": tm_val}]
                     dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input_atual, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
 
                 elif day_name == "Friday":
-                    st.info("ATHX Session: Fixed Structure")
-                    c1, c2 = st.columns([1, 4])
-                    with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_athx_w_{i}")
-                    with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic"), height=75, key=f"athx_w_{i}")
-
-                    c3, c4 = st.columns([1, 4])
-                    with c3: t_s = st.text_input("Str (min)", value=str(treinos_salvos.get(f"{day_name}_t_s", "15")), key=f"t_athx_s_{i}")
-                    with c4: s_input = st.text_area("Strength Max Descrição", treinos_salvos.get(f"{day_name}_s", ""), height=75, key=f"athx_s_{i}")
-
-                    c5, c6 = st.columns([1, 4])
-                    with c5: t_e = st.text_input("End (min)", value=str(treinos_salvos.get(f"{day_name}_t_e", "15")), key=f"t_athx_e_{i}")
-                    with c6: l_input = st.text_area("Endurance Descrição", treinos_salvos.get(f"{day_name}_e", ""), height=75, key=f"athx_e_{i}")
-
-                    c7, c8 = st.columns([1, 4])
-                    with c7: t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_athx_m_{i}")
-                    with c8: m_input_atual = st.text_area("MetCon X Descrição", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"athx_m_{i}")
-
-                    c9, c10 = st.columns([1, 4])
-                    with c9: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "5")), key=f"t_athx_r_{i}")
-                    with c10: r_input = st.text_area("Mobility Descrição", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=75, key=f"athx_r_{i}")
+                    t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_athx_w_{i}")
+                    w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic"), height=75, key=f"athx_w_{i}")
+                    t_s = st.text_input("Str (min)", value=str(treinos_salvos.get(f"{day_name}_t_s", "15")), key=f"t_athx_s_{i}")
+                    s_input = st.text_area("Strength Max Descrição", treinos_salvos.get(f"{day_name}_s", ""), height=75, key=f"athx_s_{i}")
+                    t_e = st.text_input("End (min)", value=str(treinos_salvos.get(f"{day_name}_t_e", "15")), key=f"t_athx_e_{i}")
+                    l_input = st.text_area("Endurance Descrição", treinos_salvos.get(f"{day_name}_e", ""), height=75, key=f"athx_e_{i}")
+                    t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_athx_m_{i}")
+                    m_input_atual = st.text_area("MetCon X Descrição", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"athx_m_{i}")
+                    t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "5")), key=f"t_athx_r_{i}")
+                    r_input = st.text_area("Mobility Descrição", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=75, key=f"athx_r_{i}")
 
                     tw_val = int(t_w) if t_w.isdigit() else 0
                     ts_val = int(t_s) if t_s.isdigit() else 0
@@ -636,34 +525,22 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                     tm_val = int(t_m) if t_m.isdigit() else 0
                     tr_val = int(t_r) if t_r.isdigit() else 0
                     total_time = tw_val + ts_val + te_val + tm_val + tr_val
-
                     lista_blocos_do_dia = [{"texto": w_input, "tempo": tw_val}, {"texto": s_input, "tempo": ts_val}, {"texto": l_input, "tempo": te_val}, {"texto": m_input_atual, "tempo": tm_val}]
                     dados_para_salvar.update({f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input, f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input, f"{day_name}_t_e": te_val, f"{day_name}_e": l_input, f"{day_name}_t_m": tm_val, f"{day_name}_m": m_input_atual, f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input})
 
                 else:
-                    c1, c2 = st.columns([1, 4])
-                    with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_cf_w_{i}")
-                    with c2: w_input = st.text_area("1. Warm-Up", treinos_salvos.get(f"{day_name}_w", ""), height=75, key=f"cf_w_{i}")
-
-                    c3, c4 = st.columns([1, 4])
-                    with c3: t_s = st.text_input("Str (min)", value=str(treinos_salvos.get(f"{day_name}_t_s", "15")), key=f"t_cf_s_{i}")
-                    with c4: s_input = st.text_area("2. Strength", treinos_salvos.get(f"{day_name}_s", ""), height=75, key=f"cf_s_{i}")
-
-                    c5, c6 = st.columns([1, 4])
-                    with c5: t_l = st.text_input("Skill (min)", value=str(treinos_salvos.get(f"{day_name}_t_l", "10")), key=f"t_cf_l_{i}")
-                    with c6: l_input = st.text_area("3. Skill", treinos_salvos.get(f"{day_name}_l", ""), height=75, key=f"cf_l_{i}")
-
-                    c7, c8 = st.columns([1, 4])
-                    with c7: t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_cf_m_{i}")
-                    with c8: m_input_atual = st.text_area("4. WOD", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"cf_wod_{i}")
-
-                    c9, c10 = st.columns([1, 4])
-                    with c9: t_a = st.text_input("Acc (min)", value=str(treinos_salvos.get(f"{day_name}_t_a", "5")), key=f"t_cf_a_{i}")
-                    with c10: a_input = st.text_area("5. Accessory", treinos_salvos.get(f"{day_name}_a", ""), height=75, key=f"cf_a_{i}")
-
-                    c11, c12 = st.columns([1, 4])
-                    with c11: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "5")), key=f"t_cf_r_{i}")
-                    with c12: r_input = st.text_area("6. Mobility", treinos_salvos.get(f"{day_name}_r", ""), height=75, key=f"cf_m_{i}")
+                    t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_cf_w_{i}")
+                    w_input = st.text_area("1. Warm-Up", treinos_salvos.get(f"{day_name}_w", ""), height=75, key=f"cf_w_{i}")
+                    t_s = st.text_input("Str (min)", value=str(treinos_salvos.get(f"{day_name}_t_s", "15")), key=f"t_cf_s_{i}")
+                    s_input = st.text_area("2. Strength", treinos_salvos.get(f"{day_name}_s", ""), height=75, key=f"cf_s_{i}")
+                    t_l = st.text_input("Skill (min)", value=str(treinos_salvos.get(f"{day_name}_t_l", "10")), key=f"t_cf_l_{i}")
+                    l_input = st.text_area("3. Skill", treinos_salvos.get(f"{day_name}_l", ""), height=75, key=f"cf_l_{i}")
+                    t_m = st.text_input("WOD (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "15")), key=f"t_cf_m_{i}")
+                    m_input_atual = st.text_area("4. WOD", treinos_salvos.get(f"{day_name}_m", ""), height=90, key=f"cf_wod_{i}")
+                    t_a = st.text_input("Acc (min)", value=str(treinos_salvos.get(f"{day_name}_t_a", "5")), key=f"t_cf_a_{i}")
+                    a_input = st.text_area("5. Accessory", treinos_salvos.get(f"{day_name}_a", ""), height=75, key=f"cf_a_{i}")
+                    t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "5")), key=f"t_cf_r_{i}")
+                    r_input = st.text_area("6. Mobility", treinos_salvos.get(f"{day_name}_r", ""), height=75, key=f"cf_m_{i}")
 
                     tw_val = int(t_w) if t_w.isdigit() else 0
                     ts_val = int(t_s) if t_s.isdigit() else 0
@@ -671,7 +548,6 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                     tm_val = int(t_m) if t_m.isdigit() else 0
                     ta_val = int(t_a) if t_a.isdigit() else 0
                     tr_val = int(t_r) if t_r.isdigit() else 0
-                    
                     total_time = tw_val + ts_val + tl_val + tm_val + ta_val + tr_val
 
                     lista_blocos_do_dia = [
@@ -679,7 +555,6 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                         {"texto": l_input, "tempo": tl_val}, {"texto": m_input_atual, "tempo": tm_val},
                         {"texto": a_input, "tempo": ta_val}
                     ]
-                    
                     dados_para_salvar.update({
                         f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input,
                         f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input,
@@ -689,68 +564,32 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                         f"{day_name}_t_r": tr_val, f"{day_name}_r": r_input
                     })
 
-                lista_blocos_semana_acumulados.extend(lista_blocos_do_dia)
-
                 vol_dia = extrair_volume_acumulado_estruturado(lista_blocos_do_dia)
                 eh_especial = ("HYROX" in day_focus or "ATHX" in day_focus)
                 iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
-                
                 tm_wod_val = int(t_m) if 't_m' in locals() and str(t_m).isdigit() else 15
                 alpha_wod_score = calcular_alpha_wod_load(m_input_atual, tm_wod_val)
 
                 st.markdown("---")
                 col_metric1, col_metric2 = st.columns(2)
-                
                 with col_metric1:
                     if total_time > 60:
                         st.warning(f"Duration: {total_time} min / 60 min")
                     else:
                         st.success(f"Duration: {total_time} min / 60 min")
-
                 with col_metric2:
-                    if iacs_dia <= 10:
-                        st.info(f"Daily Alpha Load (IACS): {iacs_dia} pts (Recovery)")
-                    elif iacs_dia <= 20:
-                        st.success(f"Daily Alpha Load (IACS): {iacs_dia} pts (Moderate)")
-                    elif iacs_dia <= 32:
-                        st.warning(f"Daily Alpha Load (IACS): {iacs_dia} pts (High Intensity)")
-                    else:
-                        st.error(f"Daily Alpha Load (IACS): {iacs_dia} pts (Shock Session)")
-
-                    if alpha_wod_score <= 8:
-                        st.info(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Recovery)")
-                    elif alpha_wod_score <= 18:
-                        st.success(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Moderate)")
-                    elif alpha_wod_score <= 30:
-                        st.warning(f"Alpha WOD Load: {alpha_wod_score} pts (WOD High Intensity)")
-                    else:
-                        st.error(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Anaerobic Shock)")
+                    st.info(f"Daily Alpha Load (IACS): {iacs_dia} pts")
 
             with col2:
-                st.markdown("### Scaling Chart (RX / INT / BEG / MASTERS)")
-                escala_df = pd.DataFrame({
-                    "Level": ["RX", "Intermediate", "Beginner", "Masters"],
-                    "Load / Category": ["100% RX Load", "70-80% Load", "50% Load / Dumbbells", "Custom Scaling"],
-                    "Gymnastics": ["Full Movement", "Medium Progression", "Basic Scale", "Range Focus"]
-                })
-                st.table(escala_df)
-                
-                st.markdown(f"### Intelligence Suggestions ({day_name})")
-                df_todas_sugestoes = gerar_sugestoes_com_ia(bloco, semana, day_name, day_focus, treinos_salvos)
-                st.table(df_todas_sugestoes)
-                
-                st.markdown("---")
-                st.markdown("### Validation Checklist")
-                st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
-                st.checkbox("Dominant movement pattern respected?", value=True, key=f"chk2_{i}")
-                st.checkbox("Session within 60 minutes time cap?", value=True, key=f"chk3_{i}")
-                st.checkbox("Scaling options available for all levels?", value=True, key=f"chk4_{i}")
+                st.markdown("### Intelligence Suggestions")
+                df_sugestoes = gerar_sugestoes_com_ia(bloco, semana, day_name, day_focus, treinos_salvos)
+                st.table(df_sugestoes)
 
     salvar_treinos_disco(dados_para_salvar)
 
 elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
-    st.title("🤖 Painel de Diagnóstico Direto da IA (Gemini API)")
-    st.markdown("Envie qualquer mensagem ou comando de teste abaixo para verificar instantaneamente se a API está conectada e respondendo.")
+    st.title("🤖 Painel de Diagnóstico Direto da IA (Google SDK)")
+    st.markdown("Envie qualquer mensagem ou comando de teste abaixo para verificar instantaneamente se a API está conectada.")
     
     api_key_status = st.session_state.get("gemini_api_key", "")
     if not api_key_status and "GEMINI_API_KEY" in st.secrets:
@@ -767,264 +606,18 @@ elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
         if not api_key_status:
             st.error("Insira a chave da API primeiro.")
         else:
-            with st.spinner("Conectando com o Gemini..."):
+            with st.spinner("Conectando com o Gemini via SDK oficial..."):
                 try:
-                    resposta_ia = chamar_gemini_direto(mensagem_teste)
-                    st.success("🎉 Resposta recebida com sucesso da API!")
-                    st.markdown("### Resposta do Gemini:")
+                    resposta_ia = chamar_gemini_sdk(mensagem_teste)
+                    st.success("🎉 Resposta recebida com sucesso!")
                     st.info(resposta_ia)
                 except Exception as e:
-                    st.error(f"❌ Erro ao comunicar com a API do Gemini:")
+                    st.error(f"❌ Erro ao comunicar com a API:")
                     st.code(str(e), language="text")
 
-elif st.session_state.menu_escolhido == "Biblioteca de WODs":
-    st.title("Biblioteca de WODs Alpha — Benchmarks Oficiais")
-    st.markdown("Clique em qualquer Benchmark abaixo para expandir, visualizar e **editar** o treino completo, tipo e movimentos conforme sua preferência.")
-    
-    if "benchmarks_editaveis" not in st.session_state:
-        st.session_state.benchmarks_editaveis = {
-            "The Girls": [
-                {"Nome": "Fran", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 reps: Thrusters (95/65 lbs) + Pull-ups"},
-                {"Nome": "Diane", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 reps: Deadlifts (225/155 lbs) + Handstand Push-ups"},
-                {"Nome": "Elizabeth", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 reps: Cleans (135/95 lbs) + Ring Dips"},
-                {"Nome": "Barbara", "Tipo": "5 Rounds For Time (Rest 3:00)", "Movimentos": "5 Rounds (rest 3 min): 20 Pull-ups + 30 Push-ups + 40 Sit-ups + 50 Air Squats"},
-                {"Nome": "Chelsea", "Tipo": "EMOM 30 min", "Movimentos": "EMOM 30 min: 5 Pull-ups + 10 Push-ups + 15 Air Squats"},
-                {"Nome": "Angie", "Tipo": "For Time", "Movimentos": "For Time: 100 Pull-ups + 100 Push-ups + 100 Sit-ups + 100 Air Squats"},
-                {"Nome": "Cindy", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 5 Pull-ups + 10 Push-ups + 15 Air Squats"},
-                {"Nome": "Helen", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 400m Run + 21 KB Swings (24/16 kg) + 12 Pull-ups"},
-                {"Nome": "Karen", "Tipo": "For Time (150 Reps)", "Movimentos": "For Time: 150 Wall Ball Shots (20/14 lbs)"},
-                {"Nome": "Nancy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 400m Run + 15 Overhead Squats (95/65 lbs)"},
-                {"Nome": "Eva", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 800m Run + 30 KB Swings (32/24 kg) + 30 Pull-ups"},
-                {"Nome": "Kelly", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 400m Run + 30 Box Jumps + 30 Wall Balls"},
-                {"Nome": "Annie", "Tipo": "For Time (50-40-30-20-10)", "Movimentos": "50-40-30-20-10 reps For Time: Double-Unders + AbMat Sit-ups"},
-                {"Nome": "Nicole", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 400m Run + Max Reps Pull-ups"},
-                {"Nome": "Lynne", "Tipo": "5 Rounds For Max Reps", "Movimentos": "5 Rounds For Max Reps: Max Bench Press + Max Pull-ups"},
-                {"Nome": "Maggie", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 20 HSPU + 40 Pull-ups + 50 Air Squats"},
-                {"Nome": "Grettel", "Tipo": "10 Rounds For Time", "Movimentos": "10 Rounds For Time: 3 Clean & Jerks (135/95 lbs) + 3 Bar-Facing Burpees"},
-                {"Nome": "Lulu", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 10 Pull-ups + 15 Push-ups + 20 Air Squats"},
-                {"Nome": "Gus", "Tipo": "For Time", "Movimentos": "For Time: 2000m Row + 50 Push-ups"},
-                {"Nome": "Roxanne", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 7 Pull-ups + 7 Burpees + 7 Snatches (95/65 lbs)"}
-            ],
-            "Weightlifting & Engine": [
-                {"Nome": "Isabel", "Tipo": "For Time (30 Reps)", "Movimentos": "For Time: 30 Power Snatches (135/95 lbs)"},
-                {"Nome": "Grace", "Tipo": "For Time (30 Reps)", "Movimentos": "For Time: 30 Clean & Jerks (135/95 lbs)"},
-                {"Nome": "Jackie", "Tipo": "For Time", "Movimentos": "For Time: 1000m Row + 50 Thrusters + 30 Pull-ups"},
-                {"Nome": "Amanda", "Tipo": "For Time (9-7-5)", "Movimentos": "9-7-5 reps For Time: Muscle-ups + Snatches (135/95 lbs)"},
-                {"Nome": "Mary", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 5 Handstand Push-ups + 10 Pistols + 15 Pull-ups"},
-                {"Nome": "Nate", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 2 Muscle-ups + 4 HSPU + 8 KB Swings (32/24 kg)"},
-                {"Nome": "Wrangler", "Tipo": "For Time", "Movimentos": "For Time: 30 Clean & Jerks (225/145 lbs)"},
-                {"Nome": "Cynthia", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 10 Pull-ups + 20 Push-ups + 30 Air Squats"}
-            ],
-            "Hero WODs": [
-                {"Nome": "Murph", "Tipo": "For Time", "Movimentos": "For Time: 1 Mile Run + 100 Pull-ups + 200 Push-ups + 300 Air Squats + 1 Mile Run"},
-                {"Nome": "DT", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 12 Deadlifts + 9 Hang Power Cleans + 6 Push Jerks (155/105 lbs)"},
-                {"Nome": "Kalsu", "Tipo": "For Time (EMOM Thrusters)", "Movimentos": "For Time: 100 Thrusters (135/95 lbs) with EMOM 5 Burpees"},
-                {"Nome": "Randy", "Tipo": "For Time (75 Reps)", "Movimentos": "For Time: 75 Power Snatches (75/55 lbs)"},
-                {"Nome": "J.T.", "Tipo": "21-15-9 For Time", "Movimentos": "21-15-9 For Time: Handstand Push-ups + Ring Dips + Push-ups"},
-                {"Nome": "Michael", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 800m Run + 50 Back Extensions + 50 Sit-ups"},
-                {"Nome": "Daniel", "Tipo": "For Time", "Movimentos": "For Time: 50 Pull-ups + 400m Run + 21 Thrusters + 800m Run + 21 Thrusters + 400m Run + 50 Pull-ups"},
-                {"Nome": "Jason", "Tipo": "For Time", "Movimentos": "For Time: 100 Squats + 5 Muscle-ups"},
-                {"Nome": "Josh", "Tipo": "For Time", "Movimentos": "For Time: 21 OHS + 42 Pull-ups + 15 OHS + 30 Pull-ups + 9 OHS + 18 Pull-ups"},
-                {"Nome": "Badger", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 30 Squat Cleans (95/65 lbs) + 30 Pull-ups + 800m Run"},
-                {"Nome": "Bull", "Tipo": "2 Rounds For Time", "Movimentos": "2 Rounds For Time: 2 Mile Run + 50 Pull-ups + 50 Push-ups + 50 Bodyweight Squats"},
-                {"Nome": "Holleyman", "Tipo": "30 Rounds For Time", "Movimentos": "30 Rounds For Time: 5 Wall Balls + 3 HSPU + 1 Power Clean (225/155 lbs)"},
-                {"Nome": "Luce", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 1000m Run + 10 Ring Muscle-ups + 100 Air Squats"},
-                {"Nome": "Roy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 15 Deadlifts (225/155 lbs) + 20 Box Jumps + 25 Pull-ups"},
-                {"Nome": "Coffland", "Tipo": "For Time / Complex", "Movimentos": "For Time (6 min cap): Complex of Deadlift + Clean & Jerk + Sled Push"},
-                {"Nome": "McCluskey", "Tipo": "For Time", "Movimentos": "For Time: Run + Burpees + Heavy Kettlebell Swings"},
-                {"Nome": "Rankel", "Tipo": "For Time", "Movimentos": "For Time: Run + Heavy Deadlifts + Burpee Pull-ups"}
-            ]
-        }
-    
-    categoria_escolhida = st.selectbox("Filtrar por Categoria", ["Todas as Categorias", "The Girls", "Weightlifting & Engine", "Hero WODs"])
-    
-    for cat, lista in st.session_state.benchmarks_editaveis.items():
-        if categoria_escolhida != "Todas as Categorias" and categoria_escolhida != cat:
-            continue
-            
-        st.markdown(f"### {cat}")
-        for idx, wod in enumerate(lista):
-            with st.expander(f"{wod['Nome']} — [{wod['Tipo']}]"):
-                modo_edicao = st.checkbox("Editar este WOD", key=f"chk_edit_{cat}_{idx}")
-                if modo_edicao:
-                    with st.form(key=f"form_wods_{cat}_{idx}"):
-                        novo_tipo = st.text_input("Tipo / Formato do WOD", value=wod['Tipo'], key=f"t_{cat}_{idx}")
-                        novos_movimentos = st.text_area("Descrição e Movimentos", value=wod['Movimentos'], height=120, key=f"m_{cat}_{idx}")
-                        if st.form_submit_button("Salvar Alterações"):
-                            st.session_state.benchmarks_editaveis[cat][idx]["Tipo"] = novo_tipo
-                            st.session_state.benchmarks_editaveis[cat][idx]["Movimentos"] = novos_movimentos
-                            st.success("Atualizado com sucesso!")
-                            st.rerun()
-                else:
-                    st.markdown(f"**Tipo de WOD:** {wod['Tipo']}")
-                    st.markdown(f"**Descrição Oficial e Movimentos:**")
-                    st.code(wod['Movimentos'], language="text")
-
-elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
-    st.title("Biblioteca de Exercícios & Padrões")
-    st.markdown("Consulta e gerenciamento dos padrões de movimento monitorados pelo IACS (MCVS). Você pode editar, adicionar ou remover exercícios livremente.")
-    
-    if "exercicios_editaveis" not in st.session_state:
-        st.session_state.exercicios_editaveis = [
-            {"Padrão": "Squat", "Exercícios Principais": "Back Squat, Front Squat, OHS, Wall Ball, Thruster, Lunges"},
-            {"Padrão": "Hinge", "Exercícios Principais": "Deadlift, RDL, Power Clean, Squat Clean, Snatch, KB Swing"},
-            {"Padrão": "Push", "Exercícios Principais": "Strict Press, Push Press, HSPU, Bench Press, Push-ups"},
-            {"Padrão": "Pull", "Exercícios Principais": "Pull-ups, Chest-to-Bar, Bar Muscle-Up, Row, Rope Climb"},
-            {"Padrão": "Core", "Exercícios Principais": "Toes-to-Bar, Sit-ups, V-ups, Hollow Hold, Planks"}
-        ]
-    
-    with st.expander("➕ Adicionar Novo Padrão / Exercício"):
-        with st.form("form_novo_exercicio"):
-            novo_padrao = st.text_input("Nome do Padrão (ex: Squat, Hinge, etc.)")
-            novos_itens = st.text_area("Exercícios Principais (separados por vírgula)")
-            if st.form_submit_button("Cadastrar Padrão"):
-                if novo_padrao.strip():
-                    st.session_state.exercicios_editaveis.append({
-                        "Padrão": novo_padrao.strip(),
-                        "Exercícios Principais": novos_itens.strip()
-                    })
-                    st.success("Novo padrão adicionado com sucesso!")
-                    st.rerun()
-                else:
-                    st.error("O nome do padrão não pode estar vazio.")
-
-    st.markdown("---")
-    st.subheader("Padrões Cadastrados (Editáveis)")
-    
-    for idx, ex in enumerate(st.session_state.exercicios_editaveis):
-        with st.expander(f"✏️ {ex['Padrão']} — [{ex['Exercícios Principais'][:40]}...]"):
-            with st.form(key=f"form_edit_ex_{idx}"):
-                p_nome = st.text_input("Nome do Padrão", value=ex["Padrão"], key=f"p_nome_{idx}")
-                p_itens = st.text_area("Exercícios Principais", value=ex["Exercícios Principais"], key=f"p_itens_{idx}")
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    salvar = st.form_submit_button("Salvar Alterações")
-                with col_btn2:
-                    remover = st.form_submit_button("🗑️ Excluir Padrão")
-                
-                if salvar:
-                    st.session_state.exercicios_editaveis[idx]["Padrão"] = p_nome
-                    st.session_state.exercicios_editaveis[idx]["Exercícios Principais"] = p_itens
-                    st.success("Alterações salvas com sucesso!")
-                    st.rerun()
-                if remover:
-                    st.session_state.exercicios_editaveis.pop(idx)
-                    st.success("Padrão removido com sucesso!")
-                    st.rerun()
-
-elif st.session_state.menu_escolhido == "Treinos Salvos":
-    st.title("Histórico de Treinos Salvos")
-    st.markdown("Visualize os treinos programados e salvos de forma organizada e limpa, exatamente igual à Biblioteca de WODs. Clique em qualquer dia para expandir os blocos.")
-    
-    if not treinos_salvos:
-        st.info("Nenhum treino salvo no momento. Utilize a aba de Montagem de Treinos para registrar dados.")
-    else:
-        dias_traducao = {
-            "Monday": "Segunda-feira (HYROX)",
-            "Tuesday": "Terça-feira (CrossFit - Strength / LPO)",
-            "Wednesday": "Quarta-feira (CrossFit - Gymnastics)",
-            "Thursday": "Quinta-feira (CrossFit - Strength / LPO)",
-            "Friday": "Sexta-feira (ATHX)",
-            "Saturday": "Sábado (Community WOD)",
-            "Sunday": "Domingo (Benchmark / Hero)"
-        }
-        dias_encontrados = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        
-        for d in dias_encontrados:
-            nome_amigavel = dias_traducao.get(d, d)
-            chaves_dia = [k for k in treinos_salvos.keys() if k.startswith(d)]
-            if not chaves_dia:
-                continue
-                
-            w_t = treinos_salvos.get(f"{d}_t_w", 0)
-            w_txt = treinos_salvos.get(f"{d}_w", "")
-            s_t = treinos_salvos.get(f"{d}_t_s", 0)
-            s_txt = treinos_salvos.get(f"{d}_s", "")
-            l_t = treinos_salvos.get(f"{d}_t_l", 0)
-            l_txt = treinos_salvos.get(f"{d}_l", "")
-            m_t = treinos_salvos.get(f"{d}_t_m", 0)
-            m_txt = treinos_salvos.get(f"{d}_m", "")
-            a_t = treinos_salvos.get(f"{d}_t_a", 0)
-            a_txt = treinos_salvos.get(f"{d}_a", "")
-            r_t = treinos_salvos.get(f"{d}_t_r", 0)
-            r_txt = treinos_salvos.get(f"{d}_r", "")
-            e_t = treinos_salvos.get(f"{d}_t_e", 0)
-            e_txt = treinos_salvos.get(f"{d}_e", "")
-            
-            if not any([w_txt, s_txt, l_txt, m_txt, a_txt, r_txt, e_txt]):
-                continue
-                
-            with st.expander(f"📅 {nome_amigavel}"):
-                if w_txt:
-                    st.markdown(f"**1. Warm-Up ({w_t} min):**")
-                    st.code(w_txt, language="text")
-                if s_txt:
-                    st.markdown(f"**2. Strength ({s_t} min):**")
-                    st.code(s_txt, language="text")
-                if l_txt:
-                    st.markdown(f"**3. Skill ({l_t} min):**")
-                    st.code(l_txt, language="text")
-                if e_txt:
-                    st.markdown(f"**Endurance ({e_t} min):**")
-                    st.code(e_txt, language="text")
-                if m_txt:
-                    st.markdown(f"**Main Block / WOD ({m_t} min):**")
-                    st.code(m_txt, language="text")
-                if a_txt:
-                    st.markdown(f"**Accessory ({a_t} min):**")
-                    st.code(a_txt, language="text")
-                if r_txt:
-                    st.markdown(f"**Mobility ({r_t} min):**")
-                    st.code(r_txt, language="text")
-
 elif st.session_state.menu_escolhido == "Configurações":
-    st.title("Configurações do Sistema & Gestão de Usuários")
-    st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0 e controle de acesso.")
-    
-    st.subheader("Informações da Unidade")
-    st.text_input("Nome da Unidade", value="Alpha Iron Athletics - São Paulo")
-    st.text_input("Responsável Técnico", value="Mikael Santos")
-    st.selectbox("Tema da Interface", ["Dark Alpha (Padrão)", "High Contrast"])
-    
-    st.markdown("---")
-    st.subheader("🤖 Configuração da Inteligência Artificial (Gemini API)")
-    st.markdown("Insira sua chave de API do Google Gemini para ativar as **Intelligence Suggestions** com IA em tempo real.")
+    st.title("Configurações do Sistema")
     api_key_input = st.text_input("Chave API Google Gemini", value=st.session_state.get("gemini_api_key", ""), type="password")
     if st.button("Salvar Chave da IA"):
         st.session_state.gemini_api_key = api_key_input.strip()
-        st.success("Chave de IA salva com sucesso para esta sessão!")
-    if st.button("Salvar Configurações"):
-        st.success("Configurações atualizadas com sucesso!")
-        
-    st.markdown("---")
-    st.subheader("👥 Cadastro e Gestão de Usuários (Login)")
-    st.markdown("Cadastre novos usuários/coaches para que cada um tenha seu próprio acesso com senha e treinos salvos isoladamente.")
-    
-    with st.form("form_cadastrar_usuario_novo"):
-        novo_username = st.text_input("Nome de Usuário para Login (ex: coachjoao)")
-        novo_nome_completo = st.text_input("Nome Completo / Apelido")
-        nova_senha = st.text_input("Senha de Acesso", type="password")
-        tipo_user = st.selectbox("Nível de Acesso", ["Treinador / Coach", "Administrador"])
-        
-        if st.form_submit_button("Cadastrar Novo Usuário"):
-            if novo_username.strip() and nova_senha.strip():
-                u_key = novo_username.strip().lower()
-                if u_key not in credenciais_sistema:
-                    slug_db = f"treinos_salvos_{u_key}.json"
-                    credenciais_sistema[u_key] = {
-                        "senha": nova_senha.strip(),
-                        "nome": novo_nome_completo.strip() if novo_nome_completo.strip() else novo_username.strip(),
-                        "tipo": tipo_user,
-                        "db": slug_db
-                    }
-                    salvar_credenciais(credenciais_sistema)
-                    st.success(f"Usuário '{u_key}' cadastrado com sucesso!")
-                    st.rerun()
-                else:
-                    st.warning("Este nome de usuário já existe.")
-            else:
-                st.error("Preencha o usuário e a senha.")
-                
-    st.markdown("#### Usuários Atualmente Cadastrados:")
-    for u_k, u_v in credenciais_sistema.items():
-        st.write(f"- **Usuário de Login:** `{u_k}` | **Nome:** {u_v['nome']} | **Tipo:** *{u_v['tipo']}*")
+        st.success("Chave salva com sucesso!")
