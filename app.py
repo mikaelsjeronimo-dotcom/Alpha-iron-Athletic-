@@ -1,7 +1,3 @@
-Gmail	Mikael Santos <mikael.s.jeronimo@gmail.com>
-(sem assunto)
-Mikael Santos <mikael.s.jeronimo@gmail.com>	23 de outubro de 2026 às 13:27
-Para: Mikael Santos <mikael.s.jeronimo@gmail.com>
 import streamlit as st
 
 import pandas as pd
