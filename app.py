@@ -421,7 +421,7 @@ METODOLOGIA_BASE = {
         "Week 4": {"strength": "Active Deload", "skill": "Mobility", "wod": "Benchmark Helen"}
     },
     "Block 3": {
-        "Strength": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:\n- 10 Pull-ups\n- 15 Push-ups"},
+        "Week 1": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:\n- 10 Pull-ups\n- 15 Push-ups"},
         "Week 2": {"strength": "Strict Press 5x5", "skill": "Snatch Balance 5x3", "wod": "EMOM 16 min:\n- 8 Chest to Bar\n- 10 HSPU"},
         "Week 3": {"strength": "Strict Press 5x3", "skill": "Squat Snatch 5x2", "wod": "For Time:\n- 21-15-9 Bar Muscle-ups"},
         "Week 4": {"strength": "Max Pull-ups Test", "skill": "Mobility", "wod": "Benchmark Cindy"}
@@ -434,8 +434,7 @@ METODOLOGIA_BASE = {
     }
 }
 
-def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", treinos_Atuais_semana={}):
-    # Pega a chave dos secrets do Streamlit ou do session_state
+def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", treinos_Atuais_semana={}):
     api_key = st.session_state.get("gemini_api_key", "")
     if not api_key and "GEMINI_API_KEY" in st.secrets:
         api_key = st.secrets["GEMINI_API_KEY"]
@@ -452,19 +451,20 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", treinos_Atuais_se
                         resumo_semana_str += f"- {k}: {v}\n"
 
             prompt = f"""
-            Você é o head coach especialista em periodização de CrossFit, LPO, HYROX e MetCon da metodologia oficial Alpha Iron Athletics.
+            Você é o head coach especialista em periodização de CrossFit, LPO, HYROX, ATHX e MetCon da metodologia oficial Alpha Iron Athletics.
             Contexto atual da programação:
             - Fase de Periodização: {bloco_sel}
             - Semana do Ciclo: {semana_sel}
-            - Dia Sendo Montado Agora: {dia_nome}
+            - Dia Sendo Montado: {dia_nome} (Foco do Dia: {focus_dia})
             
-            TREINOS JÁ CADASTRADOS NA SEMANA ATÉ O MOMENTO (analise para evitar repetições excessivas do mesmo exercício ou padrão, promovendo variação inteligente):
+            HISTÓRICO DE TREINOS JÁ CADASTRados na semana (analise para garantir variabilidade e evitar repetições consecutivas de padrões e movimentos idênticos):
             {resumo_semana_str if resumo_semana_str else "Nenhum outro treino cadastrado ainda nesta semana."}
             
-            DIRETRIZES TÉCNICAS DA METODOLOGIA ALPHA IRON:
-            1. Analise o que já foi montado nos outros dias e cruze com a fase ({bloco_sel} / {semana_sel}) para sugerir um treino inteligente, complementar e sem repetições repetitivas desnecessárias.
-            2. Mantenha coerência com a progressão de volume e intensidade da semana.
-            3. Divida o treino exatamente nestes 6 blocos:
+            DIRETRIZES TÉCNICAS E DE APRENDIZADO ADAPTATIVO (ALPHA IRON):
+            1. Siga rigorosamente o foco do dia ({focus_dia}). Se for HYROX (Monday), incorpore protocolos avançados de simulação de prova HYROX (corrida intervalada + SkiErg / Sled Push / Burpee Broad Jumps). Se for Gymnastics, priorize eficiência mecânica e gymnastics complexos. Se for LPO/Strength, respeite a progressão da semana ({semana_sel}).
+            2. Busque e aplique as melhores tendências e evidências científicas atuais da modalidade ({focus_dia}) para complementar o treino, mantendo a identidade Alpha Iron.
+            3. Analise o histórico dos treinos salvos para que a inteligência evolua com o uso, variando os estímulos e evitando repetições desnecessárias.
+            4. Divida a sugestão exatamente nestes 6 blocos padronizados do sistema:
                1. Warm-Up
                2. Strength
                3. Skill
@@ -472,7 +472,7 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", treinos_Atuais_se
                5. Accessory
                6. Mobility
             
-            Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo ou markdown fora do JSON.
+            Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo, crases extras ou markdown fora do JSON.
             """
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
@@ -619,9 +619,10 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
     for i, tab in enumerate(tabs):
         day_info = dias_semana[i]
         day_name = day_info["day"]
+        day_focus = day_info["focus"]
         
         with tab:
-            st.subheader(f"{day_name} — {day_info['focus']}")
+            st.subheader(f"{day_name} — {day_focus}")
             
             with st.expander("Ferramenta de Duplicação Rápida"):
                 col_dup1, col_dup2 = st.columns([2, 1])
@@ -750,7 +751,7 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                 lista_blocos_semana_acumulados.extend(lista_blocos_do_dia)
 
                 vol_dia = extrair_volume_acumulado_estruturado(lista_blocos_do_dia)
-                eh_especial = ("HYROX" in day_info["focus"] or "ATHX" in day_info["focus"])
+                eh_especial = ("HYROX" in day_focus or "ATHX" in day_focus)
                 iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
                 
                 tm_wod_val = int(t_m) if 't_m' in locals() and str(t_m).isdigit() else 15
@@ -794,8 +795,8 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                 st.table(escala_df)
                 
                 st.markdown("### Intelligence Suggestions")
-                # Envia para a IA o dicionário de treinos salvos da semana inteira para cruzar dados
-                df_todas_sugestoes = gerar_sugestoes_com_ia(bloco, semana, day_name, treinos_salvos)
+                # Chama a IA passando o dia atual, o foco do dia e o histórico completo de treinos salvos
+                df_todas_sugestoes = gerar_sugestoes_com_ia(bloco, semana, day_name, day_focus, treinos_salvos)
                 st.table(df_todas_sugestoes)
                 
                 st.markdown("---")
