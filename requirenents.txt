@@ -1,4 +1,4 @@
-streamlift
+streamlit
 pandas
 openpyxl
 google-genai
