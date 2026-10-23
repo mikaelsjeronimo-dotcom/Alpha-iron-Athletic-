@@ -121,8 +121,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-
 def encontrar_logo_sidebar():
     nomes_possiveis = ["Logo_e_mascote[1].png", "Logo_e_mascote.png", "logo.png", "Logo.png"]
     for nome in nomes_possiveis:
@@ -436,13 +434,58 @@ METODOLOGIA_BASE = {
     }
 }
 
-def gerar_todas_sugestoes(bloco_sel, semana_sel):
-    key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1]
-    key_week = semana_sel.split(" ")[0] + " " + semana_sel.split(" ")[1]
-    base_bloco = METODOLOGIA_BASE.get(key_block, {}).get(key_week, {"strength": "Strength", "skill": "Skill", "wod": "WOD"})
+def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome=""):
+    if "gemini_api_key" not in st.session_state:
+        st.session_state.gemini_api_key = ""
+
+    if st.session_state.gemini_api_key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=st.session_state.gemini_api_key)
+            prompt = f"""
+            Você é o assistente técnico especialista em periodização de CrossFit, LPO, HYROX e MetCon da metodologia Alpha Iron Athletics.
+            Contexto atual da programação:
+            - Fase: {bloco_sel}
+            - Semana do Ciclo: {semana_sel}
+            - Dia da Programação: {dia_nome}
+            
+            Gere uma sugestão inteligente e refinada de treino dividida exatamente nestes 6 blocos:
+            1. Warm-Up
+            2. Strength
+            3. Skill
+            4. WOD
+            5. Accessory
+            6. Mobility
+            
+            Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo fora do JSON.
+            """
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            txt = response.text.strip()
+            if txt.startswith("```json"):
+                txt = txt[7:]
+            if txt.endswith("```"):
+                txt = txt[:-3]
+            parsed = json.loads(txt.strip())
+            return pd.DataFrame(parsed)
+        except Exception:
+            pass
+
+    key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1] if len(bloco_sel.split(" ")) > 1 else "Block 1"
+    key_week = semana_sel.split(" ")[0] + " " + semana_sel.split(" ")[1] if len(semana_sel.split(" ")) > 1 else "Week 1"
+    base_bloco = METODOLOGIA_BASE.get(key_block, {}).get(key_week, {"strength": "Back Squat 4x8 @ 70%", "skill": "LPO Complex", "wod": "AMRAP 12 min"})
     return pd.DataFrame({
         "Session Block": ["1. Warm-Up", "2. Strength", "3. Skill", "4. WOD", "5. Accessory", "6. Mobility"],
-        "Recommended Programming": ["2-3 Rounds: Air Squats", base_bloco["strength"], base_bloco["skill"], base_bloco["wod"], "Core Accessory", "Mobility"]
+        "Recommended Programming": [
+            "2-3 Rounds: Dynamic Warm-Up + Air Squats", 
+            base_bloco["strength"], 
+            base_bloco["skill"], 
+            base_bloco["wod"], 
+            "Core Accessory & Stability", 
+            "Targeted Mobility & Stretching"
+        ]
     })
 
 dias_semana = [
@@ -736,7 +779,7 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                 st.table(escala_df)
                 
                 st.markdown("### Intelligence Suggestions")
-                df_todas_sugestoes = gerar_todas_sugestoes(bloco, semana)
+                df_todas_sugestoes = gerar_sugestoes_com_ia(bloco, semana, day_name)
                 st.table(df_todas_sugestoes)
                 
                 st.markdown("---")
@@ -1002,6 +1045,14 @@ elif st.session_state.menu_escolhido == "Configurações":
     st.text_input("Nome da Unidade", value="Alpha Iron Athletics - São Paulo")
     st.text_input("Responsável Técnico", value="Mikael Santos")
     st.selectbox("Tema da Interface", ["Dark Alpha (Padrão)", "High Contrast"])
+    
+    st.markdown("---")
+    st.subheader("🤖 Configuração da Inteligência Artificial (Gemini API)")
+    st.markdown("Insira sua chave de API do Google Gemini para ativar as **Intelligence Suggestions** com IA em tempo real.")
+    api_key_input = st.text_input("Chave API Google Gemini", value=st.session_state.get("gemini_api_key", ""), type="password")
+    if st.button("Salvar Chave da IA"):
+        st.session_state.gemini_api_key = api_key_input.strip()
+        st.success("Chave de IA salva com sucesso para esta sessão!")
     if st.button("Salvar Configurações"):
         st.success("Configurações atualizadas com sucesso!")
         
@@ -1037,4 +1088,3 @@ elif st.session_state.menu_escolhido == "Configurações":
     st.markdown("#### Usuários Atualmente Cadastrados:")
     for u_k, u_v in credenciais_sistema.items():
         st.write(f"- **Usuário de Login:** `{u_k}` | **Nome:** {u_v['nome']} | **Tipo:** *{u_v['tipo']}*")
-
