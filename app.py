@@ -856,11 +856,76 @@ elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
 
 elif st.session_state.menu_escolhido == "Treinos Salvos":
     st.title("Histórico de Treinos Salvos")
-    st.markdown("Visualize o conteúdo armazenado no banco de dados local em tempo real (`treinos_salvos.json`).")
-    if treinos_salvos:
-        st.json(treinos_salvos)
+    st.markdown("Visualize os treinos programados e salvos de forma organizada e limpa, exatamente igual à Biblioteca de WODs. Clique em qualquer dia para expandir os blocos.")
+    
+    if not treinos_salvos:
+        st.info("Nenhum treino salvo no momento. Utilize a aba de Montagem de Treinos para registrar dados.")
     else:
-        st.info("Nenhum treino salvo no momento. Utilize a aba de montagem para registrar dados.")
+        # Mapeamento dos dias para exibição amigável
+        dias_traducao = {
+            "Monday": "Segunda-feira (HYROX)",
+            "Tuesday": "Terça-feira (CrossFit - Strength / LPO)",
+            "Wednesday": "Quarta-feira (CrossFit - Gymnastics)",
+            "Thursday": "Quinta-feira (CrossFit - Strength / LPO)",
+            "Friday": "Sexta-feira (ATHX)",
+            "Saturday": "Sábado (Community WOD)",
+            "Sunday": "Domingo (Benchmark / Hero)"
+        }
+        
+        # Agrupar por dia da semana baseado nas chaves salvas
+        dias_encontrados = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        
+        for d in dias_encontrados:
+            nome_amigavel = dias_traducao.get(d, d)
+            
+            # Verificar se existe algum dado salvo para este dia
+            chaves_dia = [k for k in treinos_salvos.keys() if k.startswith(d)]
+            if not chaves_dia:
+                continue
+                
+            # Extrair os blocos do dia
+            w_t = treinos_salvos.get(f"{d}_t_w", 0)
+            w_txt = treinos_salvos.get(f"{d}_w", "")
+            s_t = treinos_salvos.get(f"{d}_t_s", 0)
+            s_txt = treinos_salvos.get(f"{d}_s", "")
+            l_t = treinos_salvos.get(f"{d}_t_l", 0)
+            l_txt = treinos_salvos.get(f"{d}_l", "")
+            m_t = treinos_salvos.get(f"{d}_t_m", 0)
+            m_txt = treinos_salvos.get(f"{d}_m", "")
+            a_t = treinos_salvos.get(f"{d}_t_a", 0)
+            a_txt = treinos_salvos.get(f"{d}_a", "")
+            r_t = treinos_salvos.get(f"{d}_t_r", 0)
+            r_txt = treinos_salvos.get(f"{d}_r", "")
+            e_t = treinos_salvos.get(f"{d}_t_e", 0)
+            e_txt = treinos_salvos.get(f"{d}_e", "")
+            
+            # Se todos os campos estiverem vazios/zerados, pula
+            if not any([w_txt, s_txt, l_txt, m_txt, a_txt, r_txt, e_txt]):
+                continue
+                
+            with st.expander(f"📅 {nome_amigavel}"):
+                if w_txt:
+                    st.markdown(f"**1. Warm-Up ({w_t} min):**")
+                    st.code(w_txt, language="text")
+                if s_txt:
+                    st.markdown(f"**2. Strength ({s_t} min):**")
+                    st.code(s_txt, language="text")
+                if l_txt:
+                    st.markdown(f"**3. Skill ({l_t} min):**")
+                    st.code(l_txt, language="text")
+                if e_txt:
+                    st.markdown(f"**Endurance ({e_t} min):**")
+                    st.code(e_txt, language="text")
+                if m_txt:
+                    st.markdown(f"**Main Block / WOD ({m_t} min):**")
+                    st.code(m_txt, language="text")
+                if a_txt:
+                    st.markdown(f"**Accessory ({a_t} min):**")
+                    st.code(a_txt, language="text")
+                if r_txt:
+                    st.markdown(f"**Mobility ({r_t} min):**")
+                    st.code(r_txt, language="text")
+
 
 elif st.session_state.menu_escolhido == "Configurações":
     st.title("Configurações do Sistema")
