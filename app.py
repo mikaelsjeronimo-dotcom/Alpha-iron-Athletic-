@@ -317,7 +317,7 @@ def chamar_gemini_direto(prompt_texto):
     if not api_key:
         raise Exception("Chave da API do Gemini não configurada.")
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt_texto}]}]
     }
@@ -1004,7 +1004,7 @@ elif st.session_state.menu_escolhido == "Configurações":
         novo_username = st.text_input("Nome de Usuário para Login (ex: coachjoao)")
         novo_nome_completo = st.text_input("Nome Completo / Apelido")
         nova_senha = st.text_input("Senha de Acesso", type="password")
-        tipo_user = st.selectbox("Nível de Acesso", ["Treinador / Coach", "Administrador"])
+        tipo_user = st.selectbox("Nível de Accesso", ["Treinador / Coach", "Administrador"])
         
         if st.form_submit_button("Cadastrar Novo Usuário"):
             if novo_username.strip() and nova_senha.strip():
