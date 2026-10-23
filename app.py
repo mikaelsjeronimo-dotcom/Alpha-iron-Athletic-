@@ -17,7 +17,7 @@ st.markdown("""
         background-color: rgba(0,0,0,0) !important;
     }
     .stApp {
-        background: linear-gradient(rgba(14, 17, 23, 0.88), rgba(14, 17, 23, 0.92)), url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1920&auto=format&fit=crop");
+        background: linear-gradient(rgba(14, 17, 23, 0.88), rgba(14, 17, 23, 0.92)), url("imagem_de_fundo.jpeg");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
