@@ -237,6 +237,7 @@ if "menu_escolhido" not in st.session_state:
 opcoes_menu = [
     "Início (Dashboard)",
     "Programação Semanal",
+    "🧠 Coach Intelligence",
     "Montagem de Treinos",
     "Biblioteca de WODs",
     "Biblioteca de Exercícios",
@@ -310,81 +311,27 @@ def obter_metas_volume(bloco_sel, semana_sel):
 metas = obter_metas_volume(bloco, semana)
 
 def chamar_gemini_direto(prompt_texto):
-    """Usa um modelo Gemini compatível listado pela própria API."""
     api_key = st.session_state.get("gemini_api_key", "")
-    if not api_key:
-        try:
-            api_key = st.secrets.get("GEMINI_API_KEY", "")
-        except Exception:
-            api_key = ""
-
+    if not api_key and "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    
     if not api_key:
         raise Exception("Chave da API do Gemini não configurada.")
-
-    base_url = "https://generativelanguage.googleapis.com/v1beta"
-    headers = {"Content-Type": "application/json"}
-
-    # Consulta os modelos que esta chave pode usar.
-    list_url = f"{base_url}/models?key={api_key}"
-    list_req = urllib.request.Request(list_url, headers={"Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(list_req, timeout=20) as response:
-            models_json = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        detalhe = e.read().decode("utf-8", errors="replace")
-        raise Exception(f"Falha ao listar modelos Gemini (HTTP {e.code}): {detalhe}")
-
-    disponiveis = [
-        item["name"]
-        for item in models_json.get("models", [])
-        if item.get("name", "").startswith("models/")
-        and "generateContent" in item.get("supportedGenerationMethods", [])
-    ]
-    if not disponiveis:
-        raise Exception(
-            "Nenhum modelo compatível com generateContent foi listado para esta chave. "
-            "Confira a chave e os modelos disponíveis no Google AI Studio."
-        )
-
-    def prioridade(nome):
-        n = nome.lower()
-        if "gemini-2.5-flash" in n:
-            return (0, n)
-        if "gemini-2.0-flash" in n:
-            return (1, n)
-        if "flash" in n:
-            return (2, n)
-        return (3, n)
-
-    payload = {"contents": [{"parts": [{"text": prompt_texto}]}]}
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt_texto}]}]
+    }
     data = json.dumps(payload).encode("utf-8")
-    erros = []
-
-    for nome_modelo in sorted(disponiveis, key=prioridade):
-        url = f"{base_url}/{nome_modelo}:generateContent?key={api_key}"
-        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=60) as response:
-                res_json = json.loads(response.read().decode("utf-8"))
-
-            respostas = res_json.get("candidates", [])
-            if not respostas:
-                raise Exception("A API respondeu sem candidatos de texto.")
-            partes = respostas[0].get("content", {}).get("parts", [])
-            texto = "".join(p.get("text", "") for p in partes if p.get("text"))
-            if texto:
-                return texto
-            raise Exception("A API não retornou texto.")
-        except urllib.error.HTTPError as e:
-            detalhe = e.read().decode("utf-8", errors="replace")
-            erros.append(f"{nome_modelo} — HTTP {e.code}: {detalhe}")
-        except Exception as e:
-            erros.append(f"{nome_modelo} — {e}")
-
-    raise Exception(
-        "Nenhum modelo listado conseguiu responder. " + " | ".join(erros[:3])
-    )
-
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_json = json.loads(response.read().decode("utf-8"))
+            return res_json["candidates"][0]["content"]["parts"][0]["text"]
+    except urllib.error.HTTPError as e:
+        erro_detalhe = e.read().decode("utf-8")
+        raise Exception(f"HTTP Error {e.code}: {erro_detalhe}")
 
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
@@ -559,6 +506,104 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
         if st.button("Treinos Salvos"):
             st.session_state.menu_escolhido = "Treinos Salvos"
             st.rerun()
+
+elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
+    st.title("🧠 Coach Intelligence")
+    st.markdown("Painel de apoio à decisão para revisar a programação salva. Ele não altera nem gera treinos automaticamente.")
+    st.caption(f"Análise da programação salva • {bloco} • {semana}")
+
+    if not treinos_salvos:
+        st.info("Ainda não há treinos salvos para analisar. Monte e salve a programação na aba Montagem de Treinos.")
+    else:
+        dias_analise = [
+            ("Monday", "Segunda-feira", "HYROX"),
+            ("Tuesday", "Terça-feira", "Força / LPO"),
+            ("Wednesday", "Quarta-feira", "Ginástica"),
+            ("Thursday", "Quinta-feira", "Foco configurado"),
+            ("Friday", "Sexta-feira", "ATHX"),
+            ("Saturday", "Sábado", "Community WOD"),
+            ("Sunday", "Domingo", "CrossFit / Benchmark")
+        ]
+        movimentos = {
+            "Squat": ["squat", "agach", "wall ball", "wallball", "thruster", "lunge", "pistol"],
+            "Hinge": ["deadlift", "terra", "hinge", "swing", "clean", "snatch", "rdl", "good morning"],
+            "Push": ["push", "press", "jerk", "hspu", "dip", "bench", "supino", "flexão", "flexao", "thruster"],
+            "Pull": ["pull-up", "pullup", "pull up", "chest to bar", "c2b", "row", "remada", "rope climb", "muscle-up", "muscle up"],
+            "Core": ["toes to bar", "ttb", "sit-up", "sit up", "hollow", "plank", "prancha", "v-up", "l-sit"],
+            "Snatch": ["snatch", "arranco"],
+            "Clean & Jerk": ["clean & jerk", "clean and jerk", "clean", "jerk", "arremesso"],
+            "Run / Engine": ["run", "corrida", "row", "rowing", "ski", "bike", "assault bike", "burpee"]
+        }
+        linhas_dias = []
+        volume_semana = {k: 0 for k in movimentos}
+        exercicios_por_dia = {}
+        for dia, nome_pt, foco in dias_analise:
+            blocos = []
+            for sufixo, rotulo in [("w", "Warm-Up"), ("s", "Strength"), ("l", "Skill"), ("e", "Endurance"), ("m", "WOD"), ("a", "Accessory"), ("r", "Mobility")]:
+                texto_bloco = str(treinos_salvos.get(f"{dia}_{sufixo}", "") or "").strip()
+                if texto_bloco:
+                    blocos.append((rotulo, texto_bloco))
+            texto_dia = "\n".join(t for _, t in blocos)
+            exercicios_por_dia[dia] = texto_dia
+            if texto_dia:
+                capacidades = [nome for nome, termos in movimentos.items() if any(termo in texto_dia.lower() for termo in termos)]
+                for cap in capacidades:
+                    volume_semana[cap] += sum(texto_dia.lower().count(termo) for termo in movimentos[cap])
+                minutos = 0
+                for sufixo in ["w", "s", "l", "e", "m", "a", "r"]:
+                    try:
+                        minutos += int(float(treinos_salvos.get(f"{dia}_t_{sufixo}", 0) or 0))
+                    except (ValueError, TypeError):
+                        pass
+                linhas_dias.append({"Dia": nome_pt, "Foco": foco, "Blocos preenchidos": len(blocos), "Tempo planejado (min)": minutos, "Estímulos identificados": ", ".join(capacidades) if capacidades else "Não identificados"})
+
+        preenchidos = len(linhas_dias)
+        tempo_total = sum(l["Tempo planejado (min)"] for l in linhas_dias)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Dias com programação", f"{preenchidos}/7")
+        c2.metric("Tempo semanal planejado", f"{tempo_total} min")
+        c3.metric("Fase analisada", bloco.split(" - ", 1)[-1])
+
+        st.subheader("Visão geral da semana")
+        if linhas_dias:
+            st.dataframe(pd.DataFrame(linhas_dias), use_container_width=True, hide_index=True)
+        else:
+            st.warning("Foram encontrados dados salvos, mas nenhum bloco de treino preenchido nos dias esperados.")
+
+        st.subheader("Distribuição de estímulos detectados")
+        st.caption("Contagem aproximada de menções nos textos salvos, não volume fisiológico validado. Use como triagem visual, não como medida definitiva de carga.")
+        dados_estimulos = pd.DataFrame([{"Estímulo": k, "Menções nos treinos": v} for k, v in volume_semana.items()])
+        dados_estimulos = dados_estimulos.sort_values("Menções nos treinos", ascending=False)
+        st.bar_chart(dados_estimulos.set_index("Estímulo"))
+
+        st.subheader("Alertas para revisão do coach")
+        alertas = []
+        if preenchidos < 7:
+            alertas.append(("info", f"Há programação identificada em {preenchidos} de 7 dias. Confirme se os dias vazios são intencionais."))
+        if tempo_total > 420:
+            alertas.append(("warning", f"O tempo semanal somado é de {tempo_total} minutos. Confira se os tempos dos blocos representam duração real e se há sobreposição."))
+        elif tempo_total and tempo_total < 180:
+            alertas.append(("info", f"O tempo semanal registrado é de {tempo_total} minutos. Verifique se todos os blocos e durações foram salvos."))
+        snatch_dias = [dia for dia, _, _ in dias_analise if "snatch" in exercicios_por_dia.get(dia, "").lower() or "arranco" in exercicios_por_dia.get(dia, "").lower()]
+        if len(snatch_dias) >= 3:
+            alertas.append(("warning", f"Snatch/arranco aparece em {len(snatch_dias)} dias ({', '.join(snatch_dias)}). Revise se a frequência está de acordo com o bloco; a repetição pode ser intencional."))
+        if not alertas:
+            alertas.append(("success", "Nenhum alerta básico foi acionado. Isso não garante que a carga esteja adequada; revise os estímulos e a recuperação entre dias."))
+        for tipo, mensagem in alertas:
+            if tipo == "warning": st.warning(mensagem)
+            elif tipo == "info": st.info(mensagem)
+            else: st.success(mensagem)
+
+        st.subheader("Revisão detalhada por dia")
+        for dia, nome_pt, foco in dias_analise:
+            texto = exercicios_por_dia.get(dia, "")
+            with st.expander(f"{nome_pt} — {foco}"):
+                if texto:
+                    st.code(texto, language="text")
+                else:
+                    st.caption("Nenhum bloco de treino salvo para este dia.")
+
+        st.caption("O Coach Intelligence é um painel de apoio: não modifica a programação, não salva alterações e não substitui a avaliação do coach. Os alertas são heurísticos e devem ser conferidos com a metodologia Alpha Iron.")
 
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
