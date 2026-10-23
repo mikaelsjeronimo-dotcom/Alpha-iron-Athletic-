@@ -239,6 +239,7 @@ opcoes_menu = [
     "Biblioteca de WODs",
     "Biblioteca de Exercícios",
     "Treinos Salvos",
+    "🤖 Teste de Diagnóstico da IA",
     "Configurações"
 ]
 
@@ -407,110 +408,91 @@ def calcular_alpha_wod_load(texto_wod, tempo_wod):
         score_wod *= 1.2
     return int(max(score_wod, 5 if len(txt_low) > 5 else 0))
 
-METODOLOGIA_BASE = {
-    "Block 1": {
-        "Week 1": {"strength": "Back Squat 4x8 @ 65-70% RPE 7", "skill": "Hang High Snatch 5x3", "wod": "AMRAP 12 min:\n- 12 DB Goblet Squats\n- 10 Ring Rows\n- 8 Push-ups"},
-        "Week 2": {"strength": "Back Squat 5x5 @ 75-80% RPE 8", "skill": "Hang Power Snatch 5x2", "wod": "For Time (Cap 15 min):\n- 15-12-9 Barbell Squats + Toes to Bar"},
-        "Week 3": {"strength": "Back Squat 5x3 @ 85% RPE 9", "skill": "Squat Snatch 6x1", "wod": "4 Rounds For Time:\n- 400m Run\n- 10 Wall Balls\n- 5 Heavy Power Cleans"},
-        "Week 4": {"strength": "3RM Back Squat Test", "skill": "Benchmark Isabel", "wod": "Benchmark Fran"}
-    },
-    "Block 2": {
-        "Week 1": {"strength": "Deadlift 4x8 @ 65%", "skill": "DB High Pull 4x10", "wod": "EMOM 20 min:\n- Min 1: 15 Cal Row\n- Min 2: 12 Burpees"},
-        "Week 2": {"strength": "Deadlift 5x5 @ 75%", "skill": "Hang Clean 5x3", "wod": "Chipper For Time:\n- 800m Run\n- 40 Box Jumps"},
-        "Week 3": {"strength": "Deadlift 5x3 @ 85%", "skill": "Power Clean 5x2", "wod": "5 Sets:\n- 200m Run\n- Max Burpee Box Jumps"},
-        "Week 4": {"strength": "Active Deload", "skill": "Mobility", "wod": "Benchmark Helen"}
-    },
-    "Block 3": {
-        "Week 1": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:\n- 10 Pull-ups\n- 15 Push-ups"},
-        "Week 2": {"strength": "Strict Press 5x5", "skill": "Snatch Balance 5x3", "wod": "EMOM 16 min:\n- 8 Chest to Bar\n- 10 HSPU"},
-        "Week 3": {"strength": "Strict Press 5x3", "skill": "Squat Snatch 5x2", "wod": "For Time:\n- 21-15-9 Bar Muscle-ups"},
-        "Week 4": {"strength": "Max Pull-ups Test", "skill": "Mobility", "wod": "Benchmark Cindy"}
-    },
-    "Block 4": {
-        "Week 1": {"strength": "Front Squat 4x6", "skill": "Snatch Complex", "wod": "AMRAP 10 min:\n- 6 Power Cleans"},
-        "Week 2": {"strength": "Front Squat 5x4", "skill": "Clean Complex", "wod": "For Time:\n- 15-12-9 Clean & Jerks"},
-        "Week 3": {"strength": "Front Squat 5x2", "skill": "C&J Single", "wod": "Benchmark Grace"},
-        "Week 4": {"strength": "1RM Front Squat", "skill": "Assessment", "wod": "Benchmark DT"}
-    }
-}
-
 def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", treinos_Atuais_semana={}):
     api_key = st.session_state.get("gemini_api_key", "")
     if not api_key and "GEMINI_API_KEY" in st.secrets:
         api_key = st.secrets["GEMINI_API_KEY"]
 
-    if api_key:
-        try:
-            from google import genai
-            client = genai.Client(api_key=api_key)
-            
-            resumo_semana_str = ""
-            if treinos_Atuais_semana:
-                for k, v in treinos_Atuais_semana.items():
-                    if v and str(v).strip():
-                        resumo_semana_str += f"- {k}: {v}\n"
+    if not api_key:
+        return pd.DataFrame({
+            "Session Block": ["Status da IA", "Aviso"],
+            "Recommended Programming": ["Chave da API do Gemini não configurada.", "Insira sua chave na aba Configurações ou nos Secrets."]
+        })
 
-            prompt = f"""
-            Você é o head coach especialista em periodização de CrossFit, LPO, HYROX, ATHX e MetCon da metodologia oficial Alpha Iron Athletics.
-            Contexto atual da programação:
-            - Fase de Periodização: {bloco_sel}
-            - Semana do Ciclo: {semana_sel}
-            - Dia Sendo Montado: {dia_nome} (Foco do Dia: {focus_dia})
-            
-            HISTÓRICO DE TREINOS JÁ CADASTRados na semana (analise para garantir variabilidade e evitar repetições consecutivas de padrões e movimentos idênticos):
-            {resumo_semana_str if resumo_semana_str else "Nenhum outro treino cadastrado ainda nesta semana."}
-            
-            DIRETRIZES TÉCNICAS E DE APRENDIZADO ADAPTATIVO (ALPHA IRON):
-            1. Siga rigorosamente o foco do dia ({focus_dia}). Se for HYROX (Monday), incorpore protocolos avançados de simulação de prova HYROX (corrida intervalada + SkiErg / Sled Push / Burpee Broad Jumps). Se for Gymnastics, priorize eficiência mecânica e gymnastics complexos. Se for LPO/Strength, respeite a progressão da semana ({semana_sel}).
-            2. Busque e aplique as melhores tendências e evidências científicas atuais da modalidade ({focus_dia}) para complementar o treino, mantendo a identidade Alpha Iron.
-            3. Analise o histórico dos treinos salvos para que a inteligência evolua com o uso, variando os estímulos e evitando repetições desnecessárias.
-            4. Divida a sugestão exatamente nestes 6 blocos padronizados do sistema:
-               1. Warm-Up
-               2. Strength
-               3. Skill
-               4. WOD
-               5. Accessory
-               6. Mobility
-            
-            Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo, crases extras ou markdown fora do JSON.
-            """
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-            )
-            txt = response.text.strip()
-            if txt.startswith("```json"):
-                txt = txt[7:]
-            if txt.endswith("```"):
-                txt = txt[:-3]
-            parsed = json.loads(txt.strip())
-            return pd.DataFrame(parsed)
-        except Exception:
-            pass
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        
+        resumo_semana_str = ""
+        if treinos_Atuais_semana:
+            for k, v in treinos_Atuais_semana.items():
+                if v and str(v).strip():
+                    resumo_semana_str += f"- {k}: {v}\n"
 
-    key_block = bloco_sel.split(" ")[0] + " " + bloco_sel.split(" ")[1] if len(bloco_sel.split(" ")) > 1 else "Block 1"
-    key_week = semana_sel.split(" ")[0] + " " + semana_sel.split(" ")[1] if len(semana_sel.split(" ")) > 1 else "Week 1"
-    base_bloco = METODOLOGIA_BASE.get(key_block, {}).get(key_week, {"strength": "Back Squat 4x8 @ 70%", "skill": "LPO Complex", "wod": "AMRAP 12 min"})
-    return pd.DataFrame({
-        "Session Block": ["1. Warm-Up", "2. Strength", "3. Skill", "4. WOD", "5. Accessory", "6. Mobility"],
-        "Recommended Programming": [
-            "2-3 Rounds: Dynamic Warm-Up + Air Squats", 
-            base_bloco["strength"], 
-            base_bloco["skill"], 
-            base_bloco["wod"], 
-            "Core Accessory & Stability", 
-            "Targeted Mobility & Stretching"
-        ]
-    })
+        instrucoes_especificas_dia = ""
+        if dia_nome == "Monday":
+            instrucoes_especificas_dia = "Foco em HYROX: Simulação de prova, corrida intervalada (Run), SkiErg, Sled Push/Pull, Burpee Broad Jumps e estações funcionais de endurance."
+        elif dia_nome in ["Tuesday", "Thursday"]:
+            arma = "Snatch" if dia_nome == "Tuesday" else "Clean"
+            instrucoes_especificas_dia = f"Foco em CrossFit Strength & LPO ({arma}): Trabalho de força específico para {arma}, técnica de LPO refinada, complex de {arma} e WOD focado em transferência para o {arma}."
+        elif dia_nome == "Wednesday":
+            instrucoes_especificas_dia = "Foco em CrossFit Gymnastics: Progressão técnica estruturada de 4 semanas (ex: HSPU, Pull-ups, Toes-to-Bar ou Muscle-ups), economia de movimento e resistência muscular localizada."
+        elif dia_nome == "Friday":
+            instrucoes_especificas_dia = "Foco em ATHX / GHX: Formato híbrido de alta performance com esteções de potência anaeróbia, calistenia avançada e endurance cardiovascular."
+        elif dia_nome == "Saturday":
+            instrucoes_especificas_dia = "Foco em Community WOD: Treino em duplas ou equipes, dinâmico, desafiador e escalável para todos os níveis da comunidade."
+        elif dia_nome == "Sunday":
+            instrucoes_especificas_dia = "Foco em Benchmark / Hero WOD: Testes oficiais (The Girls, Heroes ou WODs de referência) com análise de pacing."
+
+        prompt = f"""
+        Você é o head coach especialista em periodização de CrossFit, LPO, HYROX, ATHX e MetCon da metodologia oficial Alpha Iron Athletics.
+        CONTEXTO ATUAL DA PROGRAMAÇÃO:
+        - Fase de Periodização: {bloco_sel}
+        - Semana do Ciclo: {semana_sel}
+        - Dia Sendo Montado: {dia_nome}
+        - Foco Obrigatório do Dia: {focus_dia} ({instrucoes_especificas_dia})
+        
+        HISTÓRICO DE TREINOS JÁ CADASTRADOS NA SEMANA:
+        {resumo_semana_str if resumo_semana_str else "Nenhum outro treino cadastrado ainda nesta semana."}
+        
+        DIRETRIZES TÉCNICAS RIGOROSAS:
+        1. O treino sugerido DEVE respeitar rigorosamente o foco de {dia_nome} ({focus_dia}). Nunca sugira treino genérico ou fora do contexto daquele dia.
+        2. Incorpore as melhores tendências e diretrizes científicas mundiais da modalidade ({focus_dia}), alinhadas à fase ({bloco_sel} / {semana_sel}).
+        3. Divida a sugestão exatamente nestes 6 blocos padronizados do sistema:
+           1. Warm-Up
+           2. Strength
+           3. Skill
+           4. WOD
+           5. Accessory
+           6. Mobility
+        
+        Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo ou markdown fora do JSON.
+        """
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        txt = response.text.strip()
+        if txt.startswith("```json"):
+            txt = txt[7:]
+        if txt.endswith("```"):
+            txt = txt[:-3]
+        parsed = json.loads(txt.strip())
+        return pd.DataFrame(parsed)
+    except Exception as e:
+        return pd.DataFrame({
+            "Session Block": ["Erro na Integração IA", "Detalhe Técnico"],
+            "Recommended Programming": ["Não foi possível conectar ao Gemini via API.", str(e)]
+        })
 
 dias_semana = [
     {"day": "Monday", "focus": "HYROX"},
-    {"day": "Tuesday", "focus": "CrossFit - Strength / LPO"},
-    {"day": "Wednesday", "focus": "CrossFit - Gymnastics"},
-    {"day": "Thursday", "focus": "CrossFit - Strength / LPO"},
-    {"day": "Friday", "focus": "ATHX"},
+    {"day": "Tuesday", "focus": "CrossFit - Strength / LPO (Snatch Focus)"},
+    {"day": "Wednesday", "focus": "CrossFit - Gymnastics Progressivo"},
+    {"day": "Thursday", "focus": "CrossFit - Strength / LPO (Clean Focus)"},
+    {"day": "Friday", "focus": "ATHX / GHX"},
     {"day": "Saturday", "focus": "Community WOD"},
-    {"day": "Sunday", "focus": "Benchmark / Hero"}
+    {"day": "Sunday", "focus": "Benchmark / Hero WOD"}
 ]
 
 treinos_salvos = carregar_treinos_salvos()
@@ -543,27 +525,6 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
         if st.button("Treinos Salvos"):
             st.session_state.menu_escolhido = "Treinos Salvos"
             st.rerun()
-
-    st.markdown("---")
-    st.subheader("Resumo de Volume da Semana")
-    
-    lista_temp = []
-    for d_info in dias_semana:
-        d_n = d_info["day"]
-        w_t = treinos_salvos.get(f"{d_n}_t_w", 10)
-        w_txt = treinos_salvos.get(f"{d_n}_w", "")
-        m_t = treinos_salvos.get(f"{d_n}_t_m", 15)
-        m_txt = treinos_salvos.get(f"{d_n}_m", "")
-        lista_temp.append({"texto": w_txt, "tempo": w_t})
-        lista_temp.append({"texto": m_txt, "tempo": m_t})
-        
-    vol_resumo = extrair_volume_acumulado_estruturado(lista_temp)
-    df_dash_vol = pd.DataFrame({
-        "Padrão de Movimento": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run"],
-        "Meta": [metas["Squat"], metas["Hinge"], metas["Push"], metas["Pull"], metas["Core"], metas["Snatch"], metas["Clean & Jerk"], f"{metas['Run']} km"],
-        "Programado": [vol_resumo["Squat"], vol_resumo["Hinge"], vol_resumo["Push"], vol_resumo["Pull"], vol_resumo["Core"], vol_resumo["Snatch"], vol_resumo["Clean & Jerk"], f"{round(vol_resumo['Run'], 2)} km"]
-    })
-    st.table(df_dash_vol)
 
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
@@ -794,8 +755,7 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                 })
                 st.table(escala_df)
                 
-                st.markdown("### Intelligence Suggestions")
-                # Chama a IA passando o dia atual, o foco do dia e o histórico completo de treinos salvos
+                st.markdown(f"### Intelligence Suggestions ({day_name})")
                 df_todas_sugestoes = gerar_sugestoes_com_ia(bloco, semana, day_name, day_focus, treinos_salvos)
                 st.table(df_todas_sugestoes)
                 
@@ -808,51 +768,43 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
 
     salvar_treinos_disco(dados_para_salvar)
 
-    vol_usado_semana = extrair_volume_acumulado_estruturado(lista_blocos_semana_acumulados)
-
-    tabela_volume = pd.DataFrame({
-        "Pattern": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run (KM)"],
-        "Target": [
-            f"{int(metas['Squat'])}", f"{int(metas['Hinge'])}", f"{int(metas['Push'])}", 
-            f"{int(metas['Pull'])}", f"{int(metas['Core'])}", f"{int(metas['Snatch'])}", 
-            f"{int(metas['Clean & Jerk'])}", f"{metas['Run']} km"
-        ],
-        "Used": [
-            f"{int(vol_usado_semana['Squat'])}", f"{int(vol_usado_semana['Hinge'])}", f"{int(vol_usado_semana['Push'])}", 
-            f"{int(vol_usado_semana['Pull'])}", f"{int(vol_usado_semana['Core'])}", f"{int(vol_usado_semana['Snatch'])}", 
-            f"{int(vol_usado_semana['Clean & Jerk'])}", f"{round(vol_usado_semana['Run'], 2)} km"
-        ],
-        "Balance": [
-            f"{int(metas['Squat'] - vol_usado_semana['Squat'])}",
-            f"{int(metas['Hinge'] - vol_usado_semana['Hinge'])}",
-            f"{int(metas['Push'] - vol_usado_semana['Push'])}",
-            f"{int(metas['Pull'] - vol_usado_semana['Pull'])}",
-            f"{int(metas['Core'] - vol_usado_semana['Core'])}",
-            f"{int(metas['Snatch'] - vol_usado_semana['Snatch'])}",
-            f"{int(metas['Clean & Jerk'] - vol_usado_semana['Clean & Jerk'])}",
-            f"{round(metas['Run'] - vol_usado_semana['Run'], 2)} km"
-        ]
-    })
-
-    st.sidebar.table(tabela_volume)
-
-    iacs_semanal_total = calcular_iacs_de_vol(vol_usado_semana)
-    st.sidebar.metric("Weekly Alpha Load (Total IACS)", f"{int(iacs_semanal_total)} pts")
-
-    if iacs_semanal_total <= 45:
-        st.sidebar.success("Classification: Light Week")
-    elif iacs_semanal_total <= 60:
-        st.sidebar.info("Classification: Moderate Week")
-    elif iacs_semanal_total <= 75:
-        st.sidebar.warning("Classification: Heavy Week")
-    elif iacs_semanal_total <= 90:
-        st.sidebar.error("Classification: Shock Week")
+elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
+    st.title("🤖 Painel de Diagnóstico Direto da IA (Gemini API)")
+    st.markdown("Envie qualquer mensagem ou comando de teste abaixo para verificar instantaneamente se a API está conectada e respondendo.")
+    
+    api_key_status = st.session_state.get("gemini_api_key", "")
+    if not api_key_status and "GEMINI_API_KEY" in st.secrets:
+        api_key_status = "Configurada via st.secrets"
+    
+    if api_key_status:
+        st.success("✅ Chave da API detectada no sistema!")
     else:
-        st.sidebar.error("Not Recommended for Regular Classes")
+        st.error("❌ Chave da API NÃO encontrada! Configure na aba Configurações ou nos Secrets.")
 
-    st.markdown("---")
-    if st.button("Save & Export Weekly Programming"):
-        st.success("Programming successfully synchronized with Alpha Iron 2.0 Sheet!")
+    mensagem_teste = st.text_input("Mensagem de Teste para o Gemini", value="Olá Gemini, você está operando na Alpha Iron Athletics?")
+    
+    if st.button("Enviar Mensagem de Teste"):
+        if not api_key_status:
+            st.error("Insira a chave da API primeiro.")
+        else:
+            with st.spinner("Conectando com o Gemini..."):
+                try:
+                    from google import genai
+                    key_real = st.session_state.get("gemini_api_key", "")
+                    if not key_real and "GEMINI_API_KEY" in st.secrets:
+                        key_real = st.secrets["GEMINI_API_KEY"]
+                        
+                    client = genai.Client(api_key=key_real)
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=mensagem_teste,
+                    )
+                    st.success("🎉 Resposta recebida com sucesso da API!")
+                    st.markdown("### Resposta do Gemini:")
+                    st.info(response.text)
+                except Exception as e:
+                    st.error(f"❌ Erro ao comunicar com a API do Gemini:")
+                    st.code(str(e), language="text")
 
 elif st.session_state.menu_escolhido == "Biblioteca de WODs":
     st.title("Biblioteca de WODs Alpha — Benchmarks Oficiais")
