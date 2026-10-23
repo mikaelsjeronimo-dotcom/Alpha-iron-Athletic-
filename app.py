@@ -11,71 +11,88 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("""
+def obter_fundo_base64():
+    nomes_possiveis = ["alpha_iron.jpg", "alpha_iron.png", "Alpha_Iron.jpg", "Alpha_Iron.png"]
+    for nome in nomes_possiveis:
+        if os.path.exists(nome):
+            with open(nome, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode()
+    arquivos = glob.glob("*.jpg") + glob.glob("*.png") + glob.glob("*.jpeg")
+    for f in arquivos:
+        if "alpha" in f.lower() or "iron" in f.lower():
+            with open(f, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode()
+    return None
+
+img_bg_base64 = obter_fundo_base64()
+
+if img_bg_base64:
+    css_bg = f'.stApp {{ background: linear-gradient(rgba(14, 17, 23, 0.85), rgba(14, 17, 23, 0.92)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; color: #f0f2f6; }}'
+else:
+    css_bg = '.stApp { background-color: #0e1117; color: #f0f2f6; }'
+
+st.markdown(f"""
     <style>
-    [data-testid="stHeader"] {
+    {css_bg}
+    [data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
-    }
-    .stApp {
-        background-color: #0e1117;
-        color: #f0f2f6;
-    }
-    [data-testid="stSidebar"] {
-        background-color: #121418;
+    }}
+    [data-testid="stSidebar"] {{
+        background-color: rgba(18, 20, 24, 0.92) !important;
         border-right: 1px solid #22262d;
-    }
-    h1, h2, h3, h4 {
+    }}
+    h1, h2, h3, h4 {{
         color: #00E5FF !important;
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
         letter-spacing: -0.5px;
-    }
-    .stTabs [data-baseweb="tab-list"] {
+    }}
+    .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
-        background-color: #121418;
+        background-color: rgba(18, 20, 24, 0.85);
         padding: 6px;
         border-radius: 12px;
         border: 1px solid #22262d;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1a1d24;
+    }}
+    .stTabs [data-baseweb="tab"] {{
+        background-color: rgba(26, 29, 36, 0.9);
         color: #9ca3af;
         border-radius: 8px;
         padding: 8px 16px;
         font-weight: 600;
         border: none;
-    }
-    .stTabs [aria-selected="true"] {
+    }}
+    .stTabs [aria-selected="true"] {{
         background-color: #00E5FF !important;
         color: #0e1117 !important;
-    }
-    .stTextInput input, .stTextArea textarea {
-        background-color: #161920 !important;
+    }}
+    .stTextInput input, .stTextArea textarea {{
+        background-color: rgba(22, 25, 32, 0.9) !important;
         color: #ffffff !important;
         border: 1px solid #2a2f3a !important;
         border-radius: 8px !important;
-    }
-    .stTextInput input:focus, .stTextArea textarea:focus {
+    }}
+    .stTextInput input:focus, .stTextArea textarea:focus {{
         border-color: #00E5FF !important;
         box-shadow: 0 0 5px rgba(0, 229, 255, 0.3) !important;
-    }
-    [data-testid="stMetricValue"] {
+    }}
+    [data-testid="stMetricValue"] {{
         color: #ffffff !important;
         font-size: 24px !important;
-    }
-    [data-testid="stMetricLabel"] {
+    }}
+    [data-testid="stMetricLabel"] {{
         color: #9ca3af !important;
-    }
-    table {
-        background-color: #161920 !important;
+    }}
+    table {{
+        background-color: rgba(22, 25, 32, 0.88) !important;
         border-radius: 8px;
         color: #e5e7eb !important;
-    }
-    th {
-        background-color: #1f242d !important;
+    }}
+    th {{
+        background-color: rgba(31, 36, 45, 0.95) !important;
         color: #00E5FF !important;
-    }
-    .stButton button {
+    }}
+    .stButton button {{
         background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%);
         color: #0e1117;
         font-weight: 700;
@@ -84,12 +101,12 @@ st.markdown("""
         padding: 0.6rem 1.2rem;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
         transition: all 0.3s ease;
-    }
-    .stButton button:hover {
+    }}
+    .stButton button:hover {{
         background: linear-gradient(135deg, #0066ff 0%, #33edff 100%);
         box-shadow: 0 6px 16px rgba(0, 229, 255, 0.5);
         transform: translateY(-1px);
-    }
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -124,7 +141,6 @@ def carregar_logo_sidebar():
     else:
         st.sidebar.markdown("<h2 style='text-align: center; color: #00E5FF;'>ALPHA IRON</h2>", unsafe_allow_html=True)
 
-# --- SISTEMA DE AUTENTICAÇÃO (LOGIN / SENHA) ---
 AUTH_FILE = "usuarios_credenciais.json"
 
 def carregar_credenciais():
@@ -174,7 +190,6 @@ if not st.session_state.autenticado:
                     st.error("Usuário ou senha incorretos.")
     st.stop()
 
-# Definir banco de dados do usuário logado
 info_user = credenciais_sistema.get(st.session_state.usuario_logado, {"db": "treinos_salvos_mikael.json"})
 DB_FILE = info_user.get("db", "treinos_salvos_mikael.json")
 
@@ -288,7 +303,8 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
         tempo_minutos = item.get("tempo", 0)
         if not texto:
             continue
-        linhas = [l.strip() for l in texto.split("\n") if l.strip()]
+        linhas = [l.strip() for l in texto.split("
+") if l.strip()]
         texto_low = texto.lower()
         is_emom = "emom" in texto_low or "e90s" in texto_low or "e90" in texto_low
         num_rounds = 1
@@ -323,7 +339,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                         for a, b, c in esquema_hifen:
                             reps_calculadas += int(a) + int(b) + int(c)
                     else:
-                        nums = re.findall(r'\b(\d+)\b', linha_limpa)
+                        nums = re.findall(r' (\d+) ', linha_limpa)
                         if nums:
                             reps_encontradas = [int(n) for n in nums if int(n) <= 300]
                             if reps_encontradas:
@@ -383,26 +399,46 @@ def calcular_alpha_wod_load(texto_wod, tempo_wod):
 
 METODOLOGIA_BASE = {
     "Block 1": {
-        "Week 1": {"strength": "Back Squat 4x8 @ 65-70% RPE 7", "skill": "Hang High Snatch 5x3", "wod": "AMRAP 12 min:\n- 12 DB Goblet Squats\n- 10 Ring Rows\n- 8 Push-ups"},
-        "Week 2": {"strength": "Back Squat 5x5 @ 75-80% RPE 8", "skill": "Hang Power Snatch 5x2", "wod": "For Time (Cap 15 min):\n- 15-12-9 Barbell Squats + Toes to Bar"},
-        "Week 3": {"strength": "Back Squat 5x3 @ 85% RPE 9", "skill": "Squat Snatch 6x1", "wod": "4 Rounds For Time:\n- 400m Run\n- 10 Wall Balls\n- 5 Heavy Power Cleans"},
+        "Week 1": {"strength": "Back Squat 4x8 @ 65-70% RPE 7", "skill": "Hang High Snatch 5x3", "wod": "AMRAP 12 min:
+- 12 DB Goblet Squats
+- 10 Ring Rows
+- 8 Push-ups"},
+        "Week 2": {"strength": "Back Squat 5x5 @ 75-80% RPE 8", "skill": "Hang Power Snatch 5x2", "wod": "For Time (Cap 15 min):
+- 15-12-9 Barbell Squats + Toes to Bar"},
+        "Week 3": {"strength": "Back Squat 5x3 @ 85% RPE 9", "skill": "Squat Snatch 6x1", "wod": "4 Rounds For Time:
+- 400m Run
+- 10 Wall Balls
+- 5 Heavy Power Cleans"},
         "Week 4": {"strength": "3RM Back Squat Test", "skill": "Benchmark Isabel", "wod": "Benchmark Fran"}
     },
     "Block 2": {
-        "Week 1": {"strength": "Deadlift 4x8 @ 65%", "skill": "DB High Pull 4x10", "wod": "EMOM 20 min:\n- Min 1: 15 Cal Row\n- Min 2: 12 Burpees"},
-        "Week 2": {"strength": "Deadlift 5x5 @ 75%", "skill": "Hang Clean 5x3", "wod": "Chipper For Time:\n- 800m Run\n- 40 Box Jumps"},
-        "Week 3": {"strength": "Deadlift 5x3 @ 85%", "skill": "Power Clean 5x2", "wod": "5 Sets:\n- 200m Run\n- Max Burpee Box Jumps"},
+        "Week 1": {"strength": "Deadlift 4x8 @ 65%", "skill": "DB High Pull 4x10", "wod": "EMOM 20 min:
+- Min 1: 15 Cal Row
+- Min 2: 12 Burpees"},
+        "Week 2": {"strength": "Deadlift 5x5 @ 75%", "skill": "Hang Clean 5x3", "wod": "Chipper For Time:
+- 800m Run
+- 40 Box Jumps"},
+        "Week 3": {"strength": "Deadlift 5x3 @ 85%", "skill": "Power Clean 5x2", "wod": "5 Sets:
+- 200m Run
+- Max Burpee Box Jumps"},
         "Week 4": {"strength": "Active Deload", "skill": "Mobility", "wod": "Benchmark Helen"}
     },
     "Block 3": {
-        "Week 1": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:\n- 10 Pull-ups\n- 15 Push-ups"},
-        "Week 2": {"strength": "Strict Press 5x5", "skill": "Snatch Balance 5x3", "wod": "EMOM 16 min:\n- 8 Chest to Bar\n- 10 HSPU"},
-        "Week 3": {"strength": "Strict Press 5x3", "skill": "Squat Snatch 5x2", "wod": "For Time:\n- 21-15-9 Bar Muscle-ups"},
+        "Week 1": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:
+- 10 Pull-ups
+- 15 Push-ups"},
+        "Week 2": {"strength": "Strict Press 5x5", "skill": "Snatch Balance 5x3", "wod": "EMOM 16 min:
+- 8 Chest to Bar
+- 10 HSPU"},
+        "Week 3": {"strength": "Strict Press 5x3", "skill": "Squat Snatch 5x2", "wod": "For Time:
+- 21-15-9 Bar Muscle-ups"},
         "Week 4": {"strength": "Max Pull-ups Test", "skill": "Mobility", "wod": "Benchmark Cindy"}
     },
     "Block 4": {
-        "Week 1": {"strength": "Front Squat 4x6", "skill": "Snatch Complex", "wod": "AMRAP 10 min:\n- 6 Power Cleans"},
-        "Week 2": {"strength": "Front Squat 5x4", "skill": "Clean Complex", "wod": "For Time:\n- 15-12-9 Clean & Jerks"},
+        "Week 1": {"strength": "Front Squat 4x6", "skill": "Snatch Complex", "wod": "AMRAP 10 min:
+- 6 Power Cleans"},
+        "Week 2": {"strength": "Front Squat 5x4", "skill": "Clean Complex", "wod": "For Time:
+- 15-12-9 Clean & Jerks"},
         "Week 3": {"strength": "Front Squat 5x2", "skill": "C&J Single", "wod": "Benchmark Grace"},
         "Week 4": {"strength": "1RM Front Squat", "skill": "Assessment", "wod": "Benchmark DT"}
     }
