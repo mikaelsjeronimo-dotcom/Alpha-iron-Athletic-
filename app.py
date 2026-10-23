@@ -27,73 +27,83 @@ def obter_fundo_base64():
 img_bg_base64 = obter_fundo_base64()
 
 if img_bg_base64:
-    css_bg = f'.stApp {{ background: linear-gradient(rgba(14, 17, 23, 0.85), rgba(14, 17, 23, 0.92)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; color: #f0f2f6; }}'
-else:
-    css_bg = '.stApp { background-color: #0e1117; color: #f0f2f6; }'
+    css_bg = f'.stApp {{ background: linear-gradient(rgba(14, 17, 23, 0.85), rgba(14, 17, 23, 0.92)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; color: #f0f2f6; }}' if img_bg_base64 else '.stApp { background-color: #0e1117; color: #f0f2f6; }'
 
-st.markdown(f"""
+st.markdown("""
     <style>
-    {css_bg}
-    [data-testid="stHeader"] {{
+    """ + css_bg + """
+    [data-testid="stHeader"] {
         background-color: rgba(0,0,0,0) !important;
-    }}
-    [data-testid="stSidebar"] {{
+    }
+    [data-testid="stSidebar"] {
         background-color: rgba(14, 17, 23, 0.45) !important;
         backdrop-filter: blur(8px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
-    }}
-    h1, h2, h3, h4 {{
+    }
+    h1, h2, h3, h4 {
         color: #00E5FF !important;
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
         letter-spacing: -0.5px;
-    }}
-    .stTabs [data-baseweb="tab-list"] {{
+    }
+    .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: rgba(18, 20, 24, 0.85);
         padding: 6px;
         border-radius: 12px;
         border: 1px solid #22262d;
-    }}
-    .stTabs [data-baseweb="tab"] {{
+    }
+    .stTabs [data-baseweb="tab"] {
         background-color: rgba(26, 29, 36, 0.9);
         color: #9ca3af;
         border-radius: 8px;
         padding: 8px 16px;
         font-weight: 600;
-        border: none;
-    }}
-    .stTabs [aria-selected="true"] {{
-        background-color: #00E5FF !important;
+        border: none !important;
+        outline: none !important;
+    }
+    .stTabs [data-baseweb="tab"]:focus {
+        background-color: rgba(35, 39, 48, 0.95) !important;
+        color: #00E5FF !important;
+        box-shadow: none !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%) !important;
         color: #0e1117 !important;
-    }}
-    .stTextInput input, .stTextArea textarea {{
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3) !important;
+        border: none !important;
+    }
+    .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {
+        background-color: transparent !important;
+    }
+    .stTextInput input, .stTextArea textarea {
         background-color: rgba(22, 25, 32, 0.9) !important;
         color: #ffffff !important;
         border: 1px solid #2a2f3a !important;
         border-radius: 8px !important;
-    }}
-    .stTextInput input:focus, .stTextArea textarea:focus {{
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
         border-color: #00E5FF !important;
         box-shadow: 0 0 5px rgba(0, 229, 255, 0.3) !important;
-    }}
-    [data-testid="stMetricValue"] {{
+    }
+    [data-testid="stMetricValue"] {
         color: #ffffff !important;
         font-size: 24px !important;
-    }}
-    [data-testid="stMetricLabel"] {{
+    }
+    [data-testid="stMetricLabel"] {
         color: #9ca3af !important;
-    }}
-    table {{
+    }
+    table {
         background-color: rgba(22, 25, 32, 0.88) !important;
         border-radius: 8px;
         color: #e5e7eb !important;
-    }}
-    th {{
+    }
+    th {
         background-color: rgba(31, 36, 45, 0.95) !important;
         color: #00E5FF !important;
-    }}
-    .stButton button {{
+    }
+    .stButton button {
         background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%);
         color: #0e1117;
         font-weight: 700;
@@ -102,14 +112,16 @@ st.markdown(f"""
         padding: 0.6rem 1.2rem;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
         transition: all 0.3s ease;
-    }}
-    .stButton button:hover {{
+    }
+    .stButton button:hover {
         background: linear-gradient(135deg, #0066ff 0%, #33edff 100%);
         box-shadow: 0 6px 16px rgba(0, 229, 255, 0.5);
         transform: translateY(-1px);
-    }}
+    }
     </style>
-""".replace("{css_bg}", css_bg), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
+
 
 def encontrar_logo_sidebar():
     nomes_possiveis = ["Logo_e_mascote[1].png", "Logo_e_mascote.png", "logo.png", "Logo.png"]
@@ -1025,3 +1037,4 @@ elif st.session_state.menu_escolhido == "Configurações":
     st.markdown("#### Usuários Atualmente Cadastrados:")
     for u_k, u_v in credenciais_sistema.items():
         st.write(f"- **Usuário de Login:** `{u_k}` | **Nome:** {u_v['nome']} | **Tipo:** *{u_v['tipo']}*")
+
