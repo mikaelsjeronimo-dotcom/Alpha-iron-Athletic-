@@ -310,27 +310,81 @@ def obter_metas_volume(bloco_sel, semana_sel):
 metas = obter_metas_volume(bloco, semana)
 
 def chamar_gemini_direto(prompt_texto):
+    """Usa um modelo Gemini compatível listado pela própria API."""
     api_key = st.session_state.get("gemini_api_key", "")
-    if not api_key and "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-    
+    if not api_key:
+        try:
+            api_key = st.secrets.get("GEMINI_API_KEY", "")
+        except Exception:
+            api_key = ""
+
     if not api_key:
         raise Exception("Chave da API do Gemini não configurada.")
-        
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt_texto}]}]
-    }
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
-    
+
+    base_url = "https://generativelanguage.googleapis.com/v1beta"
+    headers = {"Content-Type": "application/json"}
+
+    # Consulta os modelos que esta chave pode usar.
+    list_url = f"{base_url}/models?key={api_key}"
+    list_req = urllib.request.Request(list_url, headers={"Accept": "application/json"})
     try:
-        with urllib.request.urlopen(req) as response:
-            res_json = json.loads(response.read().decode("utf-8"))
-            return res_json["candidates"][0]["content"]["parts"][0]["text"]
+        with urllib.request.urlopen(list_req, timeout=20) as response:
+            models_json = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
-        erro_detalhe = e.read().decode("utf-8")
-        raise Exception(f"HTTP Error {e.code}: {erro_detalhe}")
+        detalhe = e.read().decode("utf-8", errors="replace")
+        raise Exception(f"Falha ao listar modelos Gemini (HTTP {e.code}): {detalhe}")
+
+    disponiveis = [
+        item["name"]
+        for item in models_json.get("models", [])
+        if item.get("name", "").startswith("models/")
+        and "generateContent" in item.get("supportedGenerationMethods", [])
+    ]
+    if not disponiveis:
+        raise Exception(
+            "Nenhum modelo compatível com generateContent foi listado para esta chave. "
+            "Confira a chave e os modelos disponíveis no Google AI Studio."
+        )
+
+    def prioridade(nome):
+        n = nome.lower()
+        if "gemini-2.5-flash" in n:
+            return (0, n)
+        if "gemini-2.0-flash" in n:
+            return (1, n)
+        if "flash" in n:
+            return (2, n)
+        return (3, n)
+
+    payload = {"contents": [{"parts": [{"text": prompt_texto}]}]}
+    data = json.dumps(payload).encode("utf-8")
+    erros = []
+
+    for nome_modelo in sorted(disponiveis, key=prioridade):
+        url = f"{base_url}/{nome_modelo}:generateContent?key={api_key}"
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as response:
+                res_json = json.loads(response.read().decode("utf-8"))
+
+            respostas = res_json.get("candidates", [])
+            if not respostas:
+                raise Exception("A API respondeu sem candidatos de texto.")
+            partes = respostas[0].get("content", {}).get("parts", [])
+            texto = "".join(p.get("text", "") for p in partes if p.get("text"))
+            if texto:
+                return texto
+            raise Exception("A API não retornou texto.")
+        except urllib.error.HTTPError as e:
+            detalhe = e.read().decode("utf-8", errors="replace")
+            erros.append(f"{nome_modelo} — HTTP {e.code}: {detalhe}")
+        except Exception as e:
+            erros.append(f"{nome_modelo} — {e}")
+
+    raise Exception(
+        "Nenhum modelo listado conseguiu responder. " + " | ".join(erros[:3])
+    )
+
 
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
