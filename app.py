@@ -420,8 +420,8 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", tre
         })
 
     try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
         
         resumo_semana_str = ""
         if treinos_Atuais_semana:
@@ -452,7 +452,7 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", tre
         - Dia Sendo Montado: {dia_nome}
         - Foco Obrigatório do Dia: {focus_dia} ({instrucoes_especificas_dia})
         
-        HISTÓRICO DE TREINOS JÁ CADASTRADOS NA SEMANA:
+        HISTÓRICO DE TREINOS JÁ CADASTRados na semana:
         {resumo_semana_str if resumo_semana_str else "Nenhum outro treino cadastrado ainda nesta semana."}
         
         DIRETRIZES TÉCNICAS RIGOROSAS:
@@ -468,10 +468,8 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", tre
         
         Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo ou markdown fora do JSON.
         """
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
+        model = genai.GenerativeModel("gemini-2.5-flash") if hasattr(genai, "GenerativeModel") else genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(prompt)
         txt = response.text.strip()
         if txt.startswith("```json"):
             txt = txt[7:]
@@ -525,6 +523,27 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
         if st.button("Treinos Salvos"):
             st.session_state.menu_escolhido = "Treinos Salvos"
             st.rerun()
+
+    st.markdown("---")
+    st.subheader("Resumo de Volume da Semana")
+    
+    lista_temp = []
+    for d_info in dias_semana:
+        d_n = d_info["day"]
+        w_t = treinos_salvos.get(f"{d_n}_t_w", 10)
+        w_txt = treinos_salvos.get(f"{d_n}_w", "")
+        m_t = treinos_salvos.get(f"{d_n}_t_m", 15)
+        m_txt = treinos_salvos.get(f"{d_n}_m", "")
+        lista_temp.append({"texto": w_txt, "tempo": w_t})
+        lista_temp.append({"texto": m_txt, "tempo": m_t})
+        
+    vol_resumo = extrair_volume_acumulado_estruturado(lista_temp)
+    df_dash_vol = pd.DataFrame({
+        "Padrão de Movimento": ["Squat", "Hinge", "Push", "Pull", "Core", "Snatch", "Clean & Jerk", "Run"],
+        "Meta": [metas["Squat"], metas["Hinge"], metas["Push"], metas["Pull"], metas["Core"], metas["Snatch"], metas["Clean & Jerk"], f"{metas['Run']} km"],
+        "Programado": [vol_resumo["Squat"], vol_resumo["Hinge"], vol_resumo["Push"], vol_resumo["Pull"], vol_resumo["Core"], vol_resumo["Snatch"], vol_resumo["Clean & Jerk"], f"{round(vol_resumo['Run'], 2)} km"]
+    })
+    st.table(df_dash_vol)
 
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
@@ -789,16 +808,14 @@ elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
         else:
             with st.spinner("Conectando com o Gemini..."):
                 try:
-                    from google import genai
+                    import google.generativeai as genai
                     key_real = st.session_state.get("gemini_api_key", "")
                     if not key_real and "GEMINI_API_KEY" in st.secrets:
                         key_real = st.secrets["GEMINI_API_KEY"]
                         
-                    client = genai.Client(api_key=key_real)
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=mensagem_teste,
-                    )
+                    genai.configure(api_key=key_real)
+                    model = genai.GenerativeModel("gemini-2.5-flash") if hasattr(genai, "GenerativeModel") else genai.GenerativeModel("gemini-1.5-flash")
+                    response = model.generate_content(mensagem_teste)
                     st.success("🎉 Resposta recebida com sucesso da API!")
                     st.markdown("### Resposta do Gemini:")
                     st.info(response.text)
