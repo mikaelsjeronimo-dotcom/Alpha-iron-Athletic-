@@ -275,8 +275,8 @@ def chamar_gemini_sdk(prompt_texto):
         raise Exception("Chave da API do Gemini não configurada.")
         
     genai.configure(api_key=api_key)
-    # Modelo oficial padrão atualizado para o SDK Python
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    # Modelo atualizado e estável
+    model = genai.GenerativeModel('gemini-3.8-flash')
     response = model.generate_content(prompt_texto)
     return response.text
 
