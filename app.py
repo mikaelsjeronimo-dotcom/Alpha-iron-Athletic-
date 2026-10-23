@@ -37,7 +37,7 @@ st.markdown(f"""
     [data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
     }}
-        [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {{
         background-color: rgba(14, 17, 23, 0.45) !important;
         backdrop-filter: blur(8px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -109,7 +109,7 @@ st.markdown(f"""
         transform: translateY(-1px);
     }}
     </style>
-""", unsafe_allow_html=True)
+""".replace("{css_bg}", css_bg), unsafe_allow_html=True)
 
 def encontrar_logo_sidebar():
     nomes_possiveis = ["Logo_e_mascote[1].png", "Logo_e_mascote.png", "logo.png", "Logo.png"]
