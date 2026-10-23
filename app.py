@@ -37,9 +37,10 @@ st.markdown(f"""
     [data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
     }}
-    [data-testid="stSidebar"] {{
-        background-color: rgba(18, 20, 24, 0.92) !important;
-        border-right: 1px solid #22262d;
+        [data-testid="stSidebar"] {
+        background-color: rgba(14, 17, 23, 0.45) !important;
+        backdrop-filter: blur(8px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
     }}
     h1, h2, h3, h4 {{
         color: #00E5FF !important;
