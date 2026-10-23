@@ -348,7 +348,6 @@ def salvar_treinos_disco(dados):
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2)
-        # Gera o arquivo HTML da TV automaticamente ao salvar
         gerar_arquivo_wod_tv(dados, bloco, semana)
     except Exception:
         pass
@@ -683,18 +682,18 @@ elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
     st.title("🖥️ WOD TV — Tela para a TV do Box (LG 42LN5700)")
     st.markdown("Este painel gera automaticamente uma página super leve em HTML (`wod_tv.html`) compatível com navegadores antigos. Sempre que você altera e salva um treino, a TV atualiza sozinha na parede!")
     
-    # Garante que o arquivo HTML exista
     gerar_arquivo_wod_tv(treinos_salvos, bloco, semana)
     
-    st.info("💡 **Como configurar na sua LG 42LN5700:**
-1. Certifique-se de que o computador onde o Streamlit roda e a TV estão na mesma rede Wi-Fi/cabo.
-2. No navegador antigo da TV, digite o endereço local gerado pelo Streamlit adicionando `/wod_tv.html` ao final (ex: `http://192.168.X.X:8501/wod_tv.html`).
-3. Deixe a aba aberta em tela cheia na TV. O sistema atualizará sozinho a cada 30 segundos após você salvar qualquer treino!")
+    st.info(
+        "💡 **Como configurar na sua LG 42LN5700:**\n"
+        "1. Certifique-se de que o computador onde o Streamlit roda e a TV estão na mesma rede Wi-Fi/cabo.\n"
+        "2. No navegador antigo da TV, digite o endereço local gerado pelo Streamlit adicionando `/wod_tv.html` ao final (ex: `http://192.168.X.X:8501/wod_tv.html`).\n"
+        "3. Deixe a aba aberta em tela cheia na TV. O sistema atualizará sozinho a cada 30 segundos após você salvar qualquer treino!"
+    )
 
     st.markdown("---")
     st.subheader("Pré-visualização do WOD TV Atual:")
     
-    # Exibe em um iframe interno o wod_tv.html gerado
     if os.path.exists("wod_tv.html"):
         with open("wod_tv.html", "r", encoding="utf-8") as f:
             html_content = f.read()
