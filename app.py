@@ -11,74 +11,83 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("""
+# Verifica se a imagem de fundo existe na pasta com diferentes extensões
+background_file = "imagem_de_fundo.jpeg"
+if not os.path.exists(background_file):
+    for ext in [".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"]:
+        candidato = f"imagem_de_fundo{ext}"
+        if os.path.exists(candidato):
+            background_file = candidato
+            break
+
+st.markdown(f"""
     <style>
-    [data-testid="stHeader"] {
+    [data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
-    }
-    .stApp {
-        background: linear-gradient(rgba(14, 17, 23, 0.88), rgba(14, 17, 23, 0.92)), url("imagem_de_fundo.jpeg");
+    }}
+    .stApp {{
+        background: linear-gradient(rgba(14, 17, 23, 0.88), rgba(14, 17, 23, 0.92)), url("{background_file}");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
         color: #f0f2f6;
-    }
-    [data-testid="stSidebar"] {
+    }}
+    [data-testid="stSidebar"] {{
         background-color: #121418;
         border-right: 1px solid #22262d;
-    }
-    h1, h2, h3, h4 {
+    }}
+    h1, h2, h3, h4 {{
         color: #00E5FF !important;
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
         letter-spacing: -0.5px;
-    }
-    .stTabs [data-baseweb="tab-list"] {
+    }}
+    .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
         background-color: #121418;
         padding: 6px;
         border-radius: 12px;
         border: 1px solid #22262d;
-    }
-    .stTabs [data-baseweb="tab"] {
+    }}
+    .stTabs [data-baseweb="tab"] {{
         background-color: #1a1d24;
         color: #9ca3af;
         border-radius: 8px;
         padding: 8px 16px;
         font-weight: 600;
         border: none;
-    }
-    .stTabs [aria-selected="true"] {
+    }}
+    .stTabs [aria-selected="true"] {{
         background-color: #00E5FF !important;
         color: #0e1117 !important;
-    }
-    .stTextInput input, .stTextArea textarea {
+    }}
+    .stTextInput input, .stTextArea textarea {{
         background-color: #161920 !important;
         color: #ffffff !important;
         border: 1px solid #2a2f3a !important;
         border-radius: 8px !important;
-    }
-    .stTextInput input:focus, .stTextArea textarea:focus {
+    }}
+    .stTextInput input:focus, .stTextArea textarea:focus {{
         border-color: #00E5FF !important;
         box-shadow: 0 0 5px rgba(0, 229, 255, 0.3) !important;
-    }
-    [data-testid="stMetricValue"] {
+    }}
+    [data-testid="stMetricValue"] {{
         color: #ffffff !important;
         font-size: 24px !important;
-    }
-    [data-testid="stMetricLabel"] {
+    }}
+    [data-testid="stMetricLabel"] {{
         color: #9ca3af !important;
-    }
-    table {
+    }}
+    table {{
         background-color: #161920 !important;
         border-radius: 8px;
         color: #e5e7eb !important;
-    }
-    th {
+    }}
+    th {{
         background-color: #1f242d !important;
         color: #00E5FF !important;
-    }
-    .stButton button {
+    }}
+    .stButton button {{
         background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%);
         color: #0e1117;
         font-weight: 700;
@@ -87,12 +96,12 @@ st.markdown("""
         padding: 0.6rem 1.2rem;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
         transition: all 0.3s ease;
-    }
-    .stButton button:hover {
+    }}
+    .stButton button:hover {{
         background: linear-gradient(135deg, #0066ff 0%, #33edff 100%);
         box-shadow: 0 6px 16px rgba(0, 229, 255, 0.5);
         transform: translateY(-1px);
-    }
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -127,7 +136,6 @@ def carregar_logo_sidebar():
     else:
         st.sidebar.markdown("<h2 style='text-align: center; color: #00E5FF;'>ALPHA IRON</h2>", unsafe_allow_html=True)
 
-# --- SISTEMA DE AUTENTICAÇÃO (LOGIN / SENHA) ---
 AUTH_FILE = "usuarios_credenciais.json"
 
 def carregar_credenciais():
@@ -177,7 +185,6 @@ if not st.session_state.autenticado:
                     st.error("Usuário ou senha incorretos.")
     st.stop()
 
-# Definir banco de dados do usuário logado
 info_user = credenciais_sistema.get(st.session_state.usuario_logado, {"db": "treinos_salvos_mikael.json"})
 DB_FILE = info_user.get("db", "treinos_salvos_mikael.json")
 
