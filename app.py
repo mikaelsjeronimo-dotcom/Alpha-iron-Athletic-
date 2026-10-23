@@ -303,8 +303,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
         tempo_minutos = item.get("tempo", 0)
         if not texto:
             continue
-        linhas = [l.strip() for l in texto.split("
-") if l.strip()]
+        linhas = [l.strip() for l in texto.split("\n") if l.strip()]
         texto_low = texto.lower()
         is_emom = "emom" in texto_low or "e90s" in texto_low or "e90" in texto_low
         num_rounds = 1
@@ -339,7 +338,7 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
                         for a, b, c in esquema_hifen:
                             reps_calculadas += int(a) + int(b) + int(c)
                     else:
-                        nums = re.findall(r' (\d+) ', linha_limpa)
+                        nums = re.findall(r'\b(\d+)\b', linha_limpa)
                         if nums:
                             reps_encontradas = [int(n) for n in nums if int(n) <= 300]
                             if reps_encontradas:
@@ -399,46 +398,26 @@ def calcular_alpha_wod_load(texto_wod, tempo_wod):
 
 METODOLOGIA_BASE = {
     "Block 1": {
-        "Week 1": {"strength": "Back Squat 4x8 @ 65-70% RPE 7", "skill": "Hang High Snatch 5x3", "wod": "AMRAP 12 min:
-- 12 DB Goblet Squats
-- 10 Ring Rows
-- 8 Push-ups"},
-        "Week 2": {"strength": "Back Squat 5x5 @ 75-80% RPE 8", "skill": "Hang Power Snatch 5x2", "wod": "For Time (Cap 15 min):
-- 15-12-9 Barbell Squats + Toes to Bar"},
-        "Week 3": {"strength": "Back Squat 5x3 @ 85% RPE 9", "skill": "Squat Snatch 6x1", "wod": "4 Rounds For Time:
-- 400m Run
-- 10 Wall Balls
-- 5 Heavy Power Cleans"},
+        "Week 1": {"strength": "Back Squat 4x8 @ 65-70% RPE 7", "skill": "Hang High Snatch 5x3", "wod": "AMRAP 12 min:\n- 12 DB Goblet Squats\n- 10 Ring Rows\n- 8 Push-ups"},
+        "Week 2": {"strength": "Back Squat 5x5 @ 75-80% RPE 8", "skill": "Hang Power Snatch 5x2", "wod": "For Time (Cap 15 min):\n- 15-12-9 Barbell Squats + Toes to Bar"},
+        "Week 3": {"strength": "Back Squat 5x3 @ 85% RPE 9", "skill": "Squat Snatch 6x1", "wod": "4 Rounds For Time:\n- 400m Run\n- 10 Wall Balls\n- 5 Heavy Power Cleans"},
         "Week 4": {"strength": "3RM Back Squat Test", "skill": "Benchmark Isabel", "wod": "Benchmark Fran"}
     },
     "Block 2": {
-        "Week 1": {"strength": "Deadlift 4x8 @ 65%", "skill": "DB High Pull 4x10", "wod": "EMOM 20 min:
-- Min 1: 15 Cal Row
-- Min 2: 12 Burpees"},
-        "Week 2": {"strength": "Deadlift 5x5 @ 75%", "skill": "Hang Clean 5x3", "wod": "Chipper For Time:
-- 800m Run
-- 40 Box Jumps"},
-        "Week 3": {"strength": "Deadlift 5x3 @ 85%", "skill": "Power Clean 5x2", "wod": "5 Sets:
-- 200m Run
-- Max Burpee Box Jumps"},
+        "Week 1": {"strength": "Deadlift 4x8 @ 65%", "skill": "DB High Pull 4x10", "wod": "EMOM 20 min:\n- Min 1: 15 Cal Row\n- Min 2: 12 Burpees"},
+        "Week 2": {"strength": "Deadlift 5x5 @ 75%", "skill": "Hang Clean 5x3", "wod": "Chipper For Time:\n- 800m Run\n- 40 Box Jumps"},
+        "Week 3": {"strength": "Deadlift 5x3 @ 85%", "skill": "Power Clean 5x2", "wod": "5 Sets:\n- 200m Run\n- Max Burpee Box Jumps"},
         "Week 4": {"strength": "Active Deload", "skill": "Mobility", "wod": "Benchmark Helen"}
     },
     "Block 3": {
-        "Week 1": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:
-- 10 Pull-ups
-- 15 Push-ups"},
-        "Week 2": {"strength": "Strict Press 5x5", "skill": "Snatch Balance 5x3", "wod": "EMOM 16 min:
-- 8 Chest to Bar
-- 10 HSPU"},
-        "Week 3": {"strength": "Strict Press 5x3", "skill": "Squat Snatch 5x2", "wod": "For Time:
-- 21-15-9 Bar Muscle-ups"},
+        "Week 1": {"strength": "Strict Press 4x8", "skill": "SOTS Press 4x5", "wod": "AMRAP 14 min:\n- 10 Pull-ups\n- 15 Push-ups"},
+        "Week 2": {"strength": "Strict Press 5x5", "skill": "Snatch Balance 5x3", "wod": "EMOM 16 min:\n- 8 Chest to Bar\n- 10 HSPU"},
+        "Week 3": {"strength": "Strict Press 5x3", "skill": "Squat Snatch 5x2", "wod": "For Time:\n- 21-15-9 Bar Muscle-ups"},
         "Week 4": {"strength": "Max Pull-ups Test", "skill": "Mobility", "wod": "Benchmark Cindy"}
     },
     "Block 4": {
-        "Week 1": {"strength": "Front Squat 4x6", "skill": "Snatch Complex", "wod": "AMRAP 10 min:
-- 6 Power Cleans"},
-        "Week 2": {"strength": "Front Squat 5x4", "skill": "Clean Complex", "wod": "For Time:
-- 15-12-9 Clean & Jerks"},
+        "Week 1": {"strength": "Front Squat 4x6", "skill": "Snatch Complex", "wod": "AMRAP 10 min:\n- 6 Power Cleans"},
+        "Week 2": {"strength": "Front Squat 5x4", "skill": "Clean Complex", "wod": "For Time:\n- 15-12-9 Clean & Jerks"},
         "Week 3": {"strength": "Front Squat 5x2", "skill": "C&J Single", "wod": "Benchmark Grace"},
         "Week 4": {"strength": "1RM Front Squat", "skill": "Assessment", "wod": "Benchmark DT"}
     }
