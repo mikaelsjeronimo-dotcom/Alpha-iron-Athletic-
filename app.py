@@ -6,24 +6,6 @@ import base64
 import re
 import json
 
-DB_FILE = "treinos_salvos.json"
-
-def carregar_treinos_salvos():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def salvar_treinos_disco(dados):
-    try:
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(dados, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
 st.set_page_config(
     page_title="Alpha Iron Athletics 2.0 — Sistema de Gestão", 
     layout="wide"
@@ -142,7 +124,84 @@ def carregar_logo_sidebar():
     else:
         st.sidebar.markdown("<h2 style='text-align: center; color: #00E5FF;'>ALPHA IRON</h2>", unsafe_allow_html=True)
 
+# --- SISTEMA DE AUTENTICAÇÃO (LOGIN / SENHA) ---
+AUTH_FILE = "usuarios_credenciais.json"
+
+def carregar_credenciais():
+    if os.path.exists(AUTH_FILE):
+        try:
+            with open(AUTH_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {"mikael": {"senha": "alpha2026", "nome": "Mikael Santos", "tipo": "admin", "db": "treinos_salvos_mikael.json"}}
+    return {"mikael": {"senha": "alpha2026", "nome": "Mikael Santos", "tipo": "admin", "db": "treinos_salvos_mikael.json"}}
+
+def salvar_credenciais(cred):
+    try:
+        with open(AUTH_FILE, "w", encoding="utf-8") as f:
+            json.dump(cred, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+credenciais_sistema = carregar_credenciais()
+
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+if "usuario_logado" not in st.session_state:
+    st.session_state.usuario_logado = ""
+
+if not st.session_state.autenticado:
+    col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
+    with col_l2:
+        carregar_logo_sidebar()
+        st.markdown("<h2 style='text-align: center; color: #00E5FF;'>Alpha Iron Athletics</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #9ca3af;'>Faça login para acessar o sistema</p>", unsafe_allow_html=True)
+        
+        with st.form("form_login"):
+            username_input = st.text_input("Usuário")
+            password_input = st.text_input("Senha", type="password")
+            btn_login = st.form_submit_button("Entrar no Sistema", use_container_width=True)
+            
+            if btn_login:
+                user_lower = username_input.strip().lower()
+                if user_lower in credenciais_sistema and credenciais_sistema[user_lower]["senha"] == password_input:
+                    st.session_state.autenticado = True
+                    st.session_state.usuario_logado = user_lower
+                    st.session_state.usuario_atual = credenciais_sistema[user_lower]["nome"]
+                    st.success("Login realizado com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("Usuário ou senha incorretos.")
+    st.stop()
+
+# Definir banco de dados do usuário logado
+info_user = credenciais_sistema.get(st.session_state.usuario_logado, {"db": "treinos_salvos_mikael.json"})
+DB_FILE = info_user.get("db", "treinos_salvos_mikael.json")
+
+def carregar_treinos_salvos():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def salvar_treinos_disco(dados):
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 carregar_logo_sidebar()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown(f"👤 Logado como: **{credenciais_sistema.get(st.session_state.usuario_logado, {}).get('nome', st.session_state.usuario_logado)}**")
+if st.sidebar.button("Sair / Logout", key="btn_logout", use_container_width=True):
+    st.session_state.autenticado = False
+    st.session_state.usuario_logado = ""
+    st.rerun()
 
 if "menu_escolhido" not in st.session_state:
     st.session_state.menu_escolhido = "Início (Dashboard)"
@@ -160,9 +219,6 @@ opcoes_menu = [
 st.sidebar.markdown("### Menu Principal")
 for op in opcoes_menu:
     is_ativo = (st.session_state.menu_escolhido == op)
-    cor_botao = "#00E5FF" if is_ativo else "#1a1d24"
-    cor_texto = "#0e1117" if is_ativo else "#9ca3af"
-    
     if st.sidebar.button(op, key=f"menu_btn_{op}", use_container_width=True):
         st.session_state.menu_escolhido = op
         st.rerun()
@@ -712,61 +768,60 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
 
 elif st.session_state.menu_escolhido == "Biblioteca de WODs":
     st.title("Biblioteca de WODs Alpha — Benchmarks Oficiais")
-    st.markdown("Clique em qualquer Benchmark abaixo para expandir, visualizar e editar os dados (tipo, formato e movimentos).")
+    st.markdown("Clique em qualquer Benchmark abaixo para expandir, visualizar e **editar** o treino completo, tipo e movimentos conforme sua preferência.")
     
-    # Inicializar os benchmarks editáveis no session_state se não existirem
     if "benchmarks_editaveis" not in st.session_state:
         st.session_state.benchmarks_editaveis = {
             "The Girls": [
-                {"Nome": "Fran", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de:\n- Thrusters (95/65 lbs)\n- Pull-ups"},
-                {"Nome": "Diane", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de:\n- Deadlifts (225/155 lbs)\n- Handstand Push-ups"},
-                {"Nome": "Elizabeth", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de:\n- Cleans (135/95 lbs)\n- Ring Dips"},
-                {"Nome": "Barbara", "Tipo": "5 Rounds For Time (Rest 3:00)", "Movimentos": "5 Rounds para tempo (com 3 min de descanso entre os rounds):\n- 20 Pull-ups\n- 30 Push-ups\n- 40 Sit-ups\n- 50 Air Squats"},
-                {"Nome": "Chelsea", "Tipo": "EMOM 30 min", "Movimentos": "EMOM por 30 minutos:\n- 5 Pull-ups\n- 10 Push-ups\n- 15 Air Squats"},
-                {"Nome": "Angie", "Tipo": "For Time", "Movimentos": "Para tempo:\n- 100 Pull-ups\n- 100 Push-ups\n- 100 Sit-ups\n- 100 Air Squats"},
-                {"Nome": "Cindy", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:\n- 5 Pull-ups\n- 10 Push-ups\n- 15 Air Squats"},
-                {"Nome": "Helen", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:\n- 400m Run\n- 21 KB Swings (24/16 kg)\n- 12 Pull-ups"},
-                {"Nome": "Karen", "Tipo": "For Time (150 Reps)", "Movimentos": "Para tempo:\n- 150 Wall Ball Shots (20/14 lbs)"},
-                {"Nome": "Nancy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 400m Run\n- 15 Overhead Squats (95/65 lbs)"},
-                {"Nome": "Eva", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 800m Run\n- 30 KB Swings (32/24 kg)\n- 30 Pull-ups"},
-                {"Nome": "Kelly", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 400m Run\n- 30 Box Jumps (24/20in)\n- 30 Wall Balls (20/14 lbs)"},
-                {"Nome": "Annie", "Tipo": "For Time (50-40-30-20-10)", "Movimentos": "50-40-30-20-10 repetições para tempo:\n- Double-Unders (Saltos duplos de corda)\n- AbMat Sit-ups"},
-                {"Nome": "Nicole", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:\n- 400m Run\n- Max Reps Pull-ups"},
-                {"Nome": "Lynne", "Tipo": "5 Rounds For Max Reps", "Movimentos": "5 Rounds para máxima repetição:\n- Max Reps Bench Press (peso corporal)\n- Max Reps Pull-ups"},
-                {"Nome": "Maggie", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 20 Handstand Push-ups\n- 40 Pull-ups\n- 50 Air Squats"},
-                {"Nome": "Grettel", "Tipo": "10 Rounds For Time", "Movimentos": "10 Rounds para tempo:\n- 3 Clean & Jerks (135/95 lbs)\n- 3 Bar-Facing Burpees"},
-                {"Nome": "Lulu", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 10 Pull-ups\n- 15 Push-ups\n- 20 Air Squats"},
-                {"Nome": "Gus", "Tipo": "For Time", "Movimentos": "Para tempo:\n- 2000m Row (Remo)\n- 50 Push-ups"},
-                {"Nome": "Roxanne", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 7 Pull-ups\n- 7 Burpees\n- 7 Snatches (95/65 lbs)"}
+                {"Nome": "Fran", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 reps: Thrusters (95/65 lbs) + Pull-ups"},
+                {"Nome": "Diane", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 reps: Deadlifts (225/155 lbs) + Handstand Push-ups"},
+                {"Nome": "Elizabeth", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 reps: Cleans (135/95 lbs) + Ring Dips"},
+                {"Nome": "Barbara", "Tipo": "5 Rounds For Time (Rest 3:00)", "Movimentos": "5 Rounds (rest 3 min): 20 Pull-ups + 30 Push-ups + 40 Sit-ups + 50 Air Squats"},
+                {"Nome": "Chelsea", "Tipo": "EMOM 30 min", "Movimentos": "EMOM 30 min: 5 Pull-ups + 10 Push-ups + 15 Air Squats"},
+                {"Nome": "Angie", "Tipo": "For Time", "Movimentos": "For Time: 100 Pull-ups + 100 Push-ups + 100 Sit-ups + 100 Air Squats"},
+                {"Nome": "Cindy", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 5 Pull-ups + 10 Push-ups + 15 Air Squats"},
+                {"Nome": "Helen", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 400m Run + 21 KB Swings (24/16 kg) + 12 Pull-ups"},
+                {"Nome": "Karen", "Tipo": "For Time (150 Reps)", "Movimentos": "For Time: 150 Wall Ball Shots (20/14 lbs)"},
+                {"Nome": "Nancy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 400m Run + 15 Overhead Squats (95/65 lbs)"},
+                {"Nome": "Eva", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 800m Run + 30 KB Swings (32/24 kg) + 30 Pull-ups"},
+                {"Nome": "Kelly", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 400m Run + 30 Box Jumps + 30 Wall Balls"},
+                {"Nome": "Annie", "Tipo": "For Time (50-40-30-20-10)", "Movimentos": "50-40-30-20-10 reps For Time: Double-Unders + AbMat Sit-ups"},
+                {"Nome": "Nicole", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 400m Run + Max Reps Pull-ups"},
+                {"Nome": "Lynne", "Tipo": "5 Rounds For Max Reps", "Movimentos": "5 Rounds For Max Reps: Max Bench Press + Max Pull-ups"},
+                {"Nome": "Maggie", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 20 HSPU + 40 Pull-ups + 50 Air Squats"},
+                {"Nome": "Grettel", "Tipo": "10 Rounds For Time", "Movimentos": "10 Rounds For Time: 3 Clean & Jerks (135/95 lbs) + 3 Bar-Facing Burpees"},
+                {"Nome": "Lulu", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 10 Pull-ups + 15 Push-ups + 20 Air Squats"},
+                {"Nome": "Gus", "Tipo": "For Time", "Movimentos": "For Time: 2000m Row + 50 Push-ups"},
+                {"Nome": "Roxanne", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 7 Pull-ups + 7 Burpees + 7 Snatches (95/65 lbs)"}
             ],
             "Weightlifting & Engine": [
-                {"Nome": "Isabel", "Tipo": "For Time (30 Reps)", "Movimentos": "Para tempo:\n- 30 Power Snatches (135/95 lbs)"},
-                {"Nome": "Grace", "Tipo": "For Time (30 Reps)", "Movimentos": "Para tempo:\n- 30 Clean & Jerks (135/95 lbs)"},
-                {"Nome": "Jackie", "Tipo": "For Time", "Movimentos": "Para tempo:\n- 1000m Row\n- 50 Thrusters (45/35 lbs)\n- 30 Pull-ups"},
-                {"Nome": "Amanda", "Tipo": "For Time (9-7-5)", "Movimentos": "9-7-5 repetições para tempo:\n- Muscle-ups\n- Snatches (135/95 lbs)"},
-                {"Nome": "Mary", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:\n- 5 Handstand Push-ups\n- 10 Pistols (Single-leg squats)\n- 15 Pull-ups"},
-                {"Nome": "Nate", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:\n- 2 Muscle-ups\n- 4 Handstand Push-ups\n- 8 Kettlebell Swings (32/24 kg)"},
-                {"Nome": "Wrangler", "Tipo": "For Time", "Movimentos": "Para tempo:\n- 30 Clean & Jerks pesados (225/145 lbs)"},
-                {"Nome": "Cynthia", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:\n- 10 Pull-ups\n- 20 Push-ups\n- 30 Air Squats"}
+                {"Nome": "Isabel", "Tipo": "For Time (30 Reps)", "Movimentos": "For Time: 30 Power Snatches (135/95 lbs)"},
+                {"Nome": "Grace", "Tipo": "For Time (30 Reps)", "Movimentos": "For Time: 30 Clean & Jerks (135/95 lbs)"},
+                {"Nome": "Jackie", "Tipo": "For Time", "Movimentos": "For Time: 1000m Row + 50 Thrusters + 30 Pull-ups"},
+                {"Nome": "Amanda", "Tipo": "For Time (9-7-5)", "Movimentos": "9-7-5 reps For Time: Muscle-ups + Snatches (135/95 lbs)"},
+                {"Nome": "Mary", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 5 Handstand Push-ups + 10 Pistols + 15 Pull-ups"},
+                {"Nome": "Nate", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 2 Muscle-ups + 4 HSPU + 8 KB Swings (32/24 kg)"},
+                {"Nome": "Wrangler", "Tipo": "For Time", "Movimentos": "For Time: 30 Clean & Jerks (225/145 lbs)"},
+                {"Nome": "Cynthia", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 10 Pull-ups + 20 Push-ups + 30 Air Squats"}
             ],
             "Hero WODs": [
-                {"Nome": "Murph", "Tipo": "For Time", "Movimentos": "Para tempo (dividido ou direto):\n- 1 Mile Run (1.600m)\n- 100 Pull-ups\n- 200 Push-ups\n- 300 Air Squats\n- 1 Mile Run (1.600m)"},
-                {"Nome": "DT", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 12 Deadlifts\n- 9 Hang Power Cleans\n- 6 Push Jerks\nCarga: 155/105 lbs"},
-                {"Nome": "Kalsu", "Tipo": "For Time (EMOM Thrusters)", "Movimentos": "Para tempo (Inicia com 5 Thrusters no minuto 0 e a cada minuto):\n- 100 Thrusters (135/95 lbs)\n- Realizar 5 Burpees ao final de cada minuto."},
-                {"Nome": "Randy", "Tipo": "For Time (75 Reps)", "Movimentos": "Para tempo:\n- 75 Power Snatches (75/55 lbs)"},
-                {"Nome": "J.T.", "Tipo": "21-15-9 For Time", "Movimentos": "21-15-9 repetições para tempo:\n- Handstand Push-ups\n- Ring Dips\n- Push-ups"},
-                {"Nome": "Michael", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:\n- 800m Run\n- 50 Back Extensions\n- 50 Sit-ups"},
-                {"Nome": "Daniel", "Tipo": "For Time", "Movimentos": "Para tempo:\n- 50 Pull-ups\n- 400m Run\n- 21 Thrusters (95/65 lbs)\n- 800m Run\n- 21 Thrusters (95/65 lbs)\n- 400m Run\n- 50 Pull-ups"},
-                {"Nome": "Jason", "Tipo": "For Time", "Movimentos": "Para tempo:\n- 100 Squats\n- 5 Muscle-ups"},
-                {"Nome": "Josh", "Tipo": "For Time", "Movimentos": "Para tempo:\n- 21 Overhead Squats (95/65 lbs)\n- 42 Pull-ups\n- 15 Overhead Squats\n- 30 Pull-ups\n- 9 Overhead Squats\n- 18 Pull-ups"},
-                {"Nome": "Badger", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:\n- 30 Squat Cleans (95/65 lbs)\n- 30 Pull-ups\n- 800m Run"},
-                {"Nome": "Bull", "Tipo": "2 Rounds For Time", "Movimentos": "2 Rounds para tempo:\n- 2 Mile Run (3.200m)\n- 50 Pull-ups\n- 50 Push-ups\n- 50 Bodyweight Squats"},
-                {"Nome": "Holleyman", "Tipo": "30 Rounds For Time", "Movimentos": "30 Rounds para tempo:\n- 5 Wall Ball Shots (20/14 lbs)\n- 3 Handstand Push-ups\n- 1 Power Clean (225/155 lbs)"},
-                {"Nome": "Luce", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:\n- 1000m Run\n- 10 Ring Muscle-ups\n- 100 Air Squats"},
-                {"Nome": "Roy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:\n- 15 Deadlifts (225/155 lbs)\n- 20 Box Jumps (24/20in)\n- 25 Pull-ups"},
-                {"Nome": "Coffland", "Tipo": "For Time / Complex", "Movimentos": "Para tempo (6 minutos de limite):\n- Complex de Deadlift + Clean & Jerk\n- Sled Push pesado"},
-                {"Nome": "McCluskey", "Tipo": "For Time", "Movimentos": "Para tempo:\n- Run (Corrida)\n- Burpees\n- Kettlebell Swings"},
-                {"Nome": "Rankel", "Tipo": "For Time", "Movimentos": "Para tempo:\n- Run (Corrida)\n- Heavy Deadlifts\n- Burpee Pull-ups"}
+                {"Nome": "Murph", "Tipo": "For Time", "Movimentos": "For Time: 1 Mile Run + 100 Pull-ups + 200 Push-ups + 300 Air Squats + 1 Mile Run"},
+                {"Nome": "DT", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 12 Deadlifts + 9 Hang Power Cleans + 6 Push Jerks (155/105 lbs)"},
+                {"Nome": "Kalsu", "Tipo": "For Time (EMOM Thrusters)", "Movimentos": "For Time: 100 Thrusters (135/95 lbs) with EMOM 5 Burpees"},
+                {"Nome": "Randy", "Tipo": "For Time (75 Reps)", "Movimentos": "For Time: 75 Power Snatches (75/55 lbs)"},
+                {"Nome": "J.T.", "Tipo": "21-15-9 For Time", "Movimentos": "21-15-9 For Time: Handstand Push-ups + Ring Dips + Push-ups"},
+                {"Nome": "Michael", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 800m Run + 50 Back Extensions + 50 Sit-ups"},
+                {"Nome": "Daniel", "Tipo": "For Time", "Movimentos": "For Time: 50 Pull-ups + 400m Run + 21 Thrusters + 800m Run + 21 Thrusters + 400m Run + 50 Pull-ups"},
+                {"Nome": "Jason", "Tipo": "For Time", "Movimentos": "For Time: 100 Squats + 5 Muscle-ups"},
+                {"Nome": "Josh", "Tipo": "For Time", "Movimentos": "For Time: 21 OHS + 42 Pull-ups + 15 OHS + 30 Pull-ups + 9 OHS + 18 Pull-ups"},
+                {"Nome": "Badger", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 30 Squat Cleans (95/65 lbs) + 30 Pull-ups + 800m Run"},
+                {"Nome": "Bull", "Tipo": "2 Rounds For Time", "Movimentos": "2 Rounds For Time: 2 Mile Run + 50 Pull-ups + 50 Push-ups + 50 Bodyweight Squats"},
+                {"Nome": "Holleyman", "Tipo": "30 Rounds For Time", "Movimentos": "30 Rounds For Time: 5 Wall Balls + 3 HSPU + 1 Power Clean (225/155 lbs)"},
+                {"Nome": "Luce", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds For Time: 1000m Run + 10 Ring Muscle-ups + 100 Air Squats"},
+                {"Nome": "Roy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds For Time: 15 Deadlifts (225/155 lbs) + 20 Box Jumps + 25 Pull-ups"},
+                {"Nome": "Coffland", "Tipo": "For Time / Complex", "Movimentos": "For Time (6 min cap): Complex of Deadlift + Clean & Jerk + Sled Push"},
+                {"Nome": "McCluskey", "Tipo": "For Time", "Movimentos": "For Time: Run + Burpees + Heavy Kettlebell Swings"},
+                {"Nome": "Rankel", "Tipo": "For Time", "Movimentos": "For Time: Run + Heavy Deadlifts + Burpee Pull-ups"}
             ]
         }
     
@@ -778,16 +833,12 @@ elif st.session_state.menu_escolhido == "Biblioteca de WODs":
             
         st.markdown(f"### {cat}")
         for idx, wod in enumerate(lista):
-            # Layout limpo sem nenhum símbolo/alfinete
             with st.expander(f"{wod['Nome']} — [{wod['Tipo']}]"):
-                # Abas ou modo de exibição vs edição para manter o visual exato e limpo
                 modo_edicao = st.checkbox("Editar este WOD", key=f"chk_edit_{cat}_{idx}")
-                
                 if modo_edicao:
                     with st.form(key=f"form_wods_{cat}_{idx}"):
                         novo_tipo = st.text_input("Tipo / Formato do WOD", value=wod['Tipo'], key=f"t_{cat}_{idx}")
                         novos_movimentos = st.text_area("Descrição e Movimentos", value=wod['Movimentos'], height=120, key=f"m_{cat}_{idx}")
-                        
                         if st.form_submit_button("Salvar Alterações"):
                             st.session_state.benchmarks_editaveis[cat][idx]["Tipo"] = novo_tipo
                             st.session_state.benchmarks_editaveis[cat][idx]["Movimentos"] = novos_movimentos
@@ -798,12 +849,10 @@ elif st.session_state.menu_escolhido == "Biblioteca de WODs":
                     st.markdown(f"**Descrição Oficial e Movimentos:**")
                     st.code(wod['Movimentos'], language="text")
 
-
 elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
     st.title("Biblioteca de Exercícios & Padrões")
     st.markdown("Consulta e gerenciamento dos padrões de movimento monitorados pelo IACS (MCVS). Você pode editar, adicionar ou remover exercícios livremente.")
     
-    # Inicializar os exercícios editáveis no session_state se não existirem
     if "exercicios_editaveis" not in st.session_state:
         st.session_state.exercicios_editaveis = [
             {"Padrão": "Squat", "Exercícios Principais": "Back Squat, Front Squat, OHS, Wall Ball, Thruster, Lunges"},
@@ -836,7 +885,6 @@ elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
             with st.form(key=f"form_edit_ex_{idx}"):
                 p_nome = st.text_input("Nome do Padrão", value=ex["Padrão"], key=f"p_nome_{idx}")
                 p_itens = st.text_area("Exercícios Principais", value=ex["Exercícios Principais"], key=f"p_itens_{idx}")
-                
                 col_btn1, col_btn2 = st.columns(2)
                 with col_btn1:
                     salvar = st.form_submit_button("Salvar Alterações")
@@ -853,7 +901,6 @@ elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
                     st.success("Padrão removido com sucesso!")
                     st.rerun()
 
-
 elif st.session_state.menu_escolhido == "Treinos Salvos":
     st.title("Histórico de Treinos Salvos")
     st.markdown("Visualize os treinos programados e salvos de forma organizada e limpa, exatamente igual à Biblioteca de WODs. Clique em qualquer dia para expandir os blocos.")
@@ -861,7 +908,6 @@ elif st.session_state.menu_escolhido == "Treinos Salvos":
     if not treinos_salvos:
         st.info("Nenhum treino salvo no momento. Utilize a aba de Montagem de Treinos para registrar dados.")
     else:
-        # Mapeamento dos dias para exibição amigável
         dias_traducao = {
             "Monday": "Segunda-feira (HYROX)",
             "Tuesday": "Terça-feira (CrossFit - Strength / LPO)",
@@ -871,19 +917,14 @@ elif st.session_state.menu_escolhido == "Treinos Salvos":
             "Saturday": "Sábado (Community WOD)",
             "Sunday": "Domingo (Benchmark / Hero)"
         }
-        
-        # Agrupar por dia da semana baseado nas chaves salvas
         dias_encontrados = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         
         for d in dias_encontrados:
             nome_amigavel = dias_traducao.get(d, d)
-            
-            # Verificar se existe algum dado salvo para este dia
             chaves_dia = [k for k in treinos_salvos.keys() if k.startswith(d)]
             if not chaves_dia:
                 continue
                 
-            # Extrair os blocos do dia
             w_t = treinos_salvos.get(f"{d}_t_w", 0)
             w_txt = treinos_salvos.get(f"{d}_w", "")
             s_t = treinos_salvos.get(f"{d}_t_s", 0)
@@ -899,7 +940,6 @@ elif st.session_state.menu_escolhido == "Treinos Salvos":
             e_t = treinos_salvos.get(f"{d}_t_e", 0)
             e_txt = treinos_salvos.get(f"{d}_e", "")
             
-            # Se todos os campos estiverem vazios/zerados, pula
             if not any([w_txt, s_txt, l_txt, m_txt, a_txt, r_txt, e_txt]):
                 continue
                 
@@ -926,13 +966,47 @@ elif st.session_state.menu_escolhido == "Treinos Salvos":
                     st.markdown(f"**Mobility ({r_t} min):**")
                     st.code(r_txt, language="text")
 
-
 elif st.session_state.menu_escolhido == "Configurações":
-    st.title("Configurações do Sistema")
-    st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0.")
+    st.title("Configurações do Sistema & Gestão de Usuários")
+    st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0 e controle de acesso.")
+    
+    st.subheader("Informações da Unidade")
     st.text_input("Nome da Unidade", value="Alpha Iron Athletics - São Paulo")
     st.text_input("Responsável Técnico", value="Mikael Santos")
     st.selectbox("Tema da Interface", ["Dark Alpha (Padrão)", "High Contrast"])
     if st.button("Salvar Configurações"):
         st.success("Configurações atualizadas com sucesso!")
+        
+    st.markdown("---")
+    st.subheader("👥 Cadastro e Gestão de Usuários (Login)")
+    st.markdown("Cadastre novos usuários/coaches para que cada um tenha seu próprio acesso com senha e treinos salvos isoladamente.")
+    
+    with st.form("form_cadastrar_usuario_novo"):
+        novo_username = st.text_input("Nome de Usuário para Login (ex: coachjoao)")
+        novo_nome_completo = st.text_input("Nome Completo / Apelido")
+        nova_senha = st.text_input("Senha de Acesso", type="password")
+        tipo_user = st.selectbox("Nível de Acesso", ["Treinador / Coach", "Administrador"])
+        
+        if st.form_submit_button("Cadastrar Novo Usuário"):
+            if novo_username.strip() and nova_senha.strip():
+                u_key = novo_username.strip().lower()
+                if u_key not in credenciais_sistema:
+                    slug_db = f"treinos_salvos_{u_key}.json"
+                    credenciais_sistema[u_key] = {
+                        "senha": nova_senha.strip(),
+                        "nome": novo_nome_completo.strip() if novo_nome_completo.strip() else novo_username.strip(),
+                        "tipo": tipo_user,
+                        "db": slug_db
+                    }
+                    salvar_credenciais(credenciais_sistema)
+                    st.success(f"Usuário '{u_key}' cadastrado com sucesso!")
+                    st.rerun()
+                else:
+                    st.warning("Este nome de usuário já existe.")
+            else:
+                st.error("Preencha o usuário e a senha.")
+                
+    st.markdown("#### Usuários Atualmente Cadastrados:")
+    for u_k, u_v in credenciais_sistema.items():
+        st.write(f"- **Usuário de Login:** `{u_k}` | **Nome:** {u_v['nome']} | **Tipo:** *{u_v['tipo']}*")
 
