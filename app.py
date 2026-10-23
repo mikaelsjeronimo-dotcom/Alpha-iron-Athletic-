@@ -317,19 +317,20 @@ def chamar_gemini_direto(prompt_texto):
     if not api_key:
         raise Exception("Chave da API do Gemini não configurada.")
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt_texto}]}]
     }
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
     
-    with urllib.request.urlopen(req) as response:
-        res_json = json.loads(response.read().decode("utf-8"))
-        try:
+    try:
+        with urllib.request.urlopen(req) as response:
+            res_json = json.loads(response.read().decode("utf-8"))
             return res_json["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception:
-            return str(res_json)
+    except urllib.error.HTTPError as e:
+        erro_detalhe = e.read().decode("utf-8")
+        raise Exception(f"HTTP Error {e.code}: {erro_detalhe}")
 
 def extrair_volume_acumulado_estruturado(lista_blocos_dados):
     vol = {"Squat": 0, "Hinge": 0, "Push": 0, "Pull": 0, "Core": 0, "Snatch": 0, "Clean & Jerk": 0, "Run": 0.0}
