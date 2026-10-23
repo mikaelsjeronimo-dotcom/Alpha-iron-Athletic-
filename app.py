@@ -714,184 +714,57 @@ elif st.session_state.menu_escolhido == "Biblioteca de WODs":
     st.title("Biblioteca de WODs Alpha — Benchmarks Oficiais")
     st.markdown("Clique em qualquer Benchmark abaixo para expandir e visualizar o treino completo com todas as repetições oficiais, cargas e formato do WOD.")
     
-    # Dicionário completo de benchmarks oficiais com descrições detalhadas
     benchmarks_detalhados = {
         "The Girls": [
-            {"Nome": "Fran", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de:
-- Thrusters (95/65 lbs)
-- Pull-ups"},
-            {"Nome": "Diane", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de:
-- Deadlifts (225/155 lbs)
-- Handstand Push-ups"},
-            {"Nome": "Elizabeth", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de:
-- Cleans (135/95 lbs)
-- Ring Dips"},
-            {"Nome": "Barbara", "Tipo": "5 Rounds For Time (Rest 3:00)", "Movimentos": "5 Rounds para tempo (com 3 min de descanso entre os rounds):
-- 20 Pull-ups
-- 30 Push-ups
-- 40 Sit-ups
-- 50 Air Squats"},
-            {"Nome": "Chelsea", "Tipo": "EMOM 30 min", "Movimentos": "EMOM por 30 minutos:
-- 5 Pull-ups
-- 10 Push-ups
-- 15 Air Squats"},
-            {"Nome": "Angie", "Tipo": "For Time", "Movimentos": "Para tempo:
-- 100 Pull-ups
-- 100 Push-ups
-- 100 Sit-ups
-- 100 Air Squats"},
-            {"Nome": "Cindy", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:
-- 5 Pull-ups
-- 10 Push-ups
-- 15 Air Squats"},
-            {"Nome": "Helen", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:
-- 400m Run
-- 21 KB Swings (24/16 kg)
-- 12 Pull-ups"},
-            {"Nome": "Karen", "Tipo": "For Time (150 Reps)", "Movimentos": "Para tempo:
-- 150 Wall Ball Shots (20/14 lbs)"},
-            {"Nome": "Nancy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 400m Run
-- 15 Overhead Squats (95/65 lbs)"},
-            {"Nome": "Eva", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 800m Run
-- 30 KB Swings (32/24 kg)
-- 30 Pull-ups"},
-            {"Nome": "Kelly", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 400m Run
-- 30 Box Jumps (24/20\")
-- 30 Wall Balls (20/14 lbs)"},
-            {"Nome": "Annie", "Tipo": "For Time (50-40-30-20-10)", "Movimentos": "50-40-30-20-10 repetições para tempo:
-- Double-Unders (Saltos duplos de corda)
-- AbMat Sit-ups"},
-            {"Nome": "Nicole", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:
-- 400m Run
-- Max Reps Pull-ups (máximo de barras no final de cada volta)"},
-            {"Nome": "Lynne", "Tipo": "5 Rounds For Max Reps", "Movimentos": "5 Rounds para máxima repetição:
-- Max Reps Bench Press (peso corporal)
-- Max Reps Pull-ups"},
-            {"Nome": "Maggie", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 20 Handstand Push-ups
-- 40 Pull-ups
-- 50 Air Squats"},
-            {"Nome": "Grettel", "Tipo": "10 Rounds For Time", "Movimentos": "10 Rounds para tempo:
-- 3 Clean & Jerks (135/95 lbs)
-- 3 Bar-Facing Burpees"},
-            {"Nome": "Lulu", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 10 Pull-ups
-- 15 Push-ups
-- 20 Air Squats"},
-            {"Nome": "Gus", "Tipo": "For Time", "Movimentos": "Para tempo:
-- 2000m Row (Remo)
-- 50 Push-ups"},
-            {"Nome": "Roxanne", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 7 Pull-ups
-- 7 Burpees
-- 7 Snatches (95/65 lbs)"}
+            {"Nome": "Fran", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de: Thrusters (95/65 lbs) + Pull-ups"},
+            {"Nome": "Diane", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de: Deadlifts (225/155 lbs) + Handstand Push-ups"},
+            {"Nome": "Elizabeth", "Tipo": "For Time (21-15-9)", "Movimentos": "21-15-9 repetições de: Cleans (135/95 lbs) + Ring Dips"},
+            {"Nome": "Barbara", "Tipo": "5 Rounds For Time (Rest 3:00)", "Movimentos": "5 Rounds para tempo (3 min de descanso): 20 Pull-ups + 30 Push-ups + 40 Sit-ups + 50 Air Squats"},
+            {"Nome": "Chelsea", "Tipo": "EMOM 30 min", "Movimentos": "EMOM 30 min: 5 Pull-ups + 10 Push-ups + 15 Air Squats"},
+            {"Nome": "Angie", "Tipo": "For Time", "Movimentos": "Para tempo: 100 Pull-ups + 100 Push-ups + 100 Sit-ups + 100 Air Squats"},
+            {"Nome": "Cindy", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 5 Pull-ups + 10 Push-ups + 15 Air Squats"},
+            {"Nome": "Helen", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo: 400m Run + 21 KB Swings (24/16 kg) + 12 Pull-ups"},
+            {"Nome": "Karen", "Tipo": "For Time (150 Reps)", "Movimentos": "Para tempo: 150 Wall Ball Shots (20/14 lbs)"},
+            {"Nome": "Nancy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 400m Run + 15 Overhead Squats (95/65 lbs)"},
+            {"Nome": "Eva", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 800m Run + 30 KB Swings (32/24 kg) + 30 Pull-ups"},
+            {"Nome": "Kelly", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 400m Run + 30 Box Jumps (24/20") + 30 Wall Balls"},
+            {"Nome": "Annie", "Tipo": "For Time (50-40-30-20-10)", "Movimentos": "50-40-30-20-10 reps para tempo: Double-Unders + AbMat Sit-ups"},
+            {"Nome": "Nicole", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 400m Run + Max Reps Pull-ups em cada volta"},
+            {"Nome": "Lynne", "Tipo": "5 Rounds For Max Reps", "Movimentos": "5 Rounds para max reps: Max Bench Press (peso corporal) + Max Pull-ups"},
+            {"Nome": "Maggie", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 20 HSPU + 40 Pull-ups + 50 Air Squats"},
+            {"Nome": "Grettel", "Tipo": "10 Rounds For Time", "Movimentos": "10 Rounds para tempo: 3 Clean & Jerks (135/95 lbs) + 3 Bar-Facing Burpees"},
+            {"Nome": "Lulu", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 10 Pull-ups + 15 Push-ups + 20 Air Squats"},
+            {"Nome": "Gus", "Tipo": "For Time", "Movimentos": "Para tempo: 2000m Row + 50 Push-ups"},
+            {"Nome": "Roxanne", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 7 Pull-ups + 7 Burpees + 7 Snatches (95/65 lbs)"}
         ],
         "Weightlifting & Engine": [
-            {"Nome": "Isabel", "Tipo": "For Time (30 Reps)", "Movimentos": "Para tempo:
-- 30 Power Snatches (135/95 lbs)"},
-            {"Nome": "Grace", "Tipo": "For Time (30 Reps)", "Movimentos": "Para tempo:
-- 30 Clean & Jerks (135/95 lbs)"},
-            {"Nome": "Jackie", "Tipo": "For Time", "Movimentos": "Para tempo:
-- 1000m Row
-- 50 Thrusters (45/35 lbs)
-- 30 Pull-ups"},
-            {"Nome": "Amanda", "Tipo": "For Time (9-7-5)", "Movimentos": "9-7-5 repetições para tempo:
-- Muscle-ups
-- Snatches (135/95 lbs)"},
-            {"Nome": "Mary", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:
-- 5 Handstand Push-ups
-- 10 Pistols (Single-leg squats)
-- 15 Pull-ups"},
-            {"Nome": "Nate", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:
-- 2 Muscle-ups
-- 4 Handstand Push-ups
-- 8 Kettlebell Swings (32/24 kg)"},
-            {"Nome": "Wrangler", "Tipo": "For Time", "Movimentos": "Para tempo:
-- 30 Clean & Jerks pesados (225/145 lbs)"},
-            {"Nome": "Cynthia", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP em 20 minutos:
-- 10 Pull-ups
-- 20 Push-ups
-- 30 Air Squats"}
+            {"Nome": "Isabel", "Tipo": "For Time (30 Reps)", "Movimentos": "Para tempo: 30 Power Snatches (135/95 lbs)"},
+            {"Nome": "Grace", "Tipo": "For Time (30 Reps)", "Movimentos": "Para tempo: 30 Clean & Jerks (135/95 lbs)"},
+            {"Nome": "Jackie", "Tipo": "For Time", "Movimentos": "Para tempo: 1000m Row + 50 Thrusters (45/35 lbs) + 30 Pull-ups"},
+            {"Nome": "Amanda", "Tipo": "For Time (9-7-5)", "Movimentos": "9-7-5 reps para tempo: Muscle-ups + Snatches (135/95 lbs)"},
+            {"Nome": "Mary", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 5 Handstand Push-ups + 10 Pistols + 15 Pull-ups"},
+            {"Nome": "Nate", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 2 Muscle-ups + 4 HSPU + 8 KB Swings (32/24 kg)"},
+            {"Nome": "Wrangler", "Tipo": "For Time", "Movimentos": "Para tempo: 30 Clean & Jerks pesados (225/145 lbs)"},
+            {"Nome": "Cynthia", "Tipo": "AMRAP 20 min", "Movimentos": "AMRAP 20 min: 10 Pull-ups + 20 Push-ups + 30 Air Squats"}
         ],
         "Hero WODs": [
-            {"Nome": "Murph", "Tipo": "For Time", "Movimentos": "Para tempo (dividido ou direto):
-- 1 Mile Run (1.600m)
-- 100 Pull-ups
-- 200 Push-ups
-- 300 Air Squats
-- 1 Mile Run (1.600m)"},
-            {"Nome": "DT", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 12 Deadlifts
-- 9 Hang Power Cleans
-- 6 Push Jerks
-Carga: 155/105 lbs"},
-            {"Nome": "Kalsu", "Tipo": "For Time (EMOM Thrusters)", "Movimentos": "Para tempo (Inicia com 5 Thrusters no minuto 0 e a cada minuto):
-- 100 Thrusters (135/95 lbs)
-- Realizar 5 Burpees ao final de cada minuto antes dos thrusters."},
-            {"Nome": "Randy", "Tipo": "For Time (75 Reps)", "Movimentos": "Para tempo:
-- 75 Power Snatches (75/55 lbs)"},
-            {"Nome": "J.T.", "Tipo": "21-15-9 For Time", "Movimentos": "21-15-9 repetições para tempo:
-- Handstand Push-ups
-- Ring Dips
-- Push-ups"},
-            {"Nome": "Michael", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:
-- 800m Run
-- 50 Back Extensions
-- 50 Sit-ups"},
-            {"Nome": "Daniel", "Tipo": "For Time", "Movimentos": "Para tempo:
-- 50 Pull-ups
-- 400m Run
-- 21 Thrusters (95/65 lbs)
-- 800m Run
-- 21 Thrusters (95/65 lbs)
-- 400m Run
-- 50 Pull-ups"},
-            {"Nome": "Jason", "Tipo": "For Time", "Movimentos": "Para tempo:
-- 100 Squats
-- 5 Muscle-ups
-(Repetido em rounds estruturados ou contínuos até fechar o volume)"},
-            {"Nome": "Josh", "Tipo": "For Time", "Movimentos": "Para tempo:
-- 21 Overhead Squats (95/65 lbs)
-- 42 Pull-ups
-- 15 Overhead Squats
-- 30 Pull-ups
-- 9 Overhead Squats
-- 18 Pull-ups"},
-            {"Nome": "Badger", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:
-- 30 Squat Cleans (95/65 lbs)
-- 30 Pull-ups
-- 800m Run"},
-            {"Nome": "Bull", "Tipo": "2 Rounds For Time", "Movimentos": "2 Rounds para tempo:
-- 2 Mile Run (3.200m)
-- 50 Pull-ups
-- 50 Push-ups
-- 50 Bodyweight Squats"},
-            {"Nome": "Holleyman", "Tipo": "30 Rounds For Time", "Movimentos": "30 Rounds para tempo:
-- 5 Wall Ball Shots (20/14 lbs)
-- 3 Handstand Push-ups
-- 1 Power Clean (225/155 lbs)"},
-            {"Nome": "Luce", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo:
-- 1000m Run
-- 10 Ring Muscle-ups
-- 100 Air Squats"},
-            {"Nome": "Roy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo:
-- 15 Deadlifts (225/155 lbs)
-- 20 Box Jumps (24/20\")
-- 25 Pull-ups"},
-            {"Nome": "Coffland", "Tipo": "For Time / Complex", "Movimentos": "Para tempo (6 minutos de limite para completar o complexo + sled):
-- Complex composto por Deadlift, Clean & Jerk
-- Seguido de Sled Push (Empurrar trenó pesado) pesando conforme padrão Hero."},
-            {"Nome": "McCluskey", "Tipo": "For Time", "Movimentos": "Para tempo:
-- Run (Corrida)
-- Burpees
-- Kettlebell Swings pesados"},
-            {"Nome": "Rankel", "Tipo": "For Time", "Movimentos": "Para tempo:
-- Run (Corrida)
-- Heavy Deadlifts (Levantamento terra pesado)
-- Burpee Pull-ups"}
+            {"Nome": "Murph", "Tipo": "For Time", "Movimentos": "Para tempo: 1 Mile Run + 100 Pull-ups + 200 Push-ups + 300 Air Squats + 1 Mile Run"},
+            {"Nome": "DT", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 12 Deadlifts + 9 Hang Power Cleans + 6 Push Jerks (155/105 lbs)"},
+            {"Nome": "Kalsu", "Tipo": "For Time (EMOM Thrusters)", "Movimentos": "Para tempo: 100 Thrusters (135/95 lbs) com EMOM de 5 Burpees no início de cada minuto"},
+            {"Nome": "Randy", "Tipo": "For Time (75 Reps)", "Movimentos": "Para tempo: 75 Power Snatches (75/55 lbs)"},
+            {"Nome": "J.T.", "Tipo": "21-15-9 For Time", "Movimentos": "21-15-9 reps para tempo: Handstand Push-ups + Ring Dips + Push-ups"},
+            {"Nome": "Michael", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo: 800m Run + 50 Back Extensions + 50 Sit-ups"},
+            {"Nome": "Daniel", "Tipo": "For Time", "Movimentos": "Para tempo: 50 Pull-ups + 400m Run + 21 Thrusters + 800m Run + 21 Thrusters + 400m Run + 50 Pull-ups"},
+            {"Nome": "Jason", "Tipo": "For Time", "Movimentos": "Para tempo: 100 Squats + 5 Muscle-ups (repetido em rounds)"},
+            {"Nome": "Josh", "Tipo": "For Time", "Movimentos": "Para tempo: 21 OHS + 42 Pull-ups + 15 OHS + 30 Pull-ups + 9 OHS + 18 Pull-ups"},
+            {"Nome": "Badger", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo: 30 Squat Cleans (95/65 lbs) + 30 Pull-ups + 800m Run"},
+            {"Nome": "Bull", "Tipo": "2 Rounds For Time", "Movimentos": "2 Rounds para tempo: 2 Mile Run + 50 Pull-ups + 50 Push-ups + 50 Bodyweight Squats"},
+            {"Nome": "Holleyman", "Tipo": "30 Rounds For Time", "Movimentos": "30 Rounds para tempo: 5 Wall Balls + 3 HSPU + 1 Power Clean (225/155 lbs)"},
+            {"Nome": "Luce", "Tipo": "3 Rounds For Time", "Movimentos": "3 Rounds para tempo: 1000m Run + 10 Ring Muscle-ups + 100 Air Squats"},
+            {"Nome": "Roy", "Tipo": "5 Rounds For Time", "Movimentos": "5 Rounds para tempo: 15 Deadlifts (225/155 lbs) + 20 Box Jumps + 25 Pull-ups"},
+            {"Nome": "Coffland", "Tipo": "For Time / Complex", "Movimentos": "Para tempo (6 min cap): Complex de Deadlift + Clean & Jerk + Sled Push pesado"},
+            {"Nome": "McCluskey", "Tipo": "For Time", "Movimentos": "Para tempo: Run + Burpees + Heavy Kettlebell Swings"},
+            {"Nome": "Rankel", "Tipo": "For Time", "Movimentos": "Para tempo: Run + Heavy Deadlifts + Burpee Pull-ups"}
         ]
     }
     
