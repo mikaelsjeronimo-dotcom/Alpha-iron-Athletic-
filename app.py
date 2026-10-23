@@ -801,15 +801,58 @@ elif st.session_state.menu_escolhido == "Biblioteca de WODs":
 
 elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
     st.title("Biblioteca de Exercícios & Padrões")
-    st.markdown("Consulta rápida dos padrões de movimento monitorados pelo IACS (MCVS).")
-    exercicios_db = [
-        {"Padrão": "Squat", "Exercícios Principais": "Back Squat, Front Squat, OHS, Wall Ball, Thruster, Lunges"},
-        {"Padrão": "Hinge", "Exercícios Principais": "Deadlift, RDL, Power Clean, Squat Clean, Snatch, KB Swing"},
-        {"Padrão": "Push", "Exercícios Principais": "Strict Press, Push Press, HSPU, Bench Press, Push-ups"},
-        {"Padrão": "Pull", "Exercícios Principais": "Pull-ups, Chest-to-Bar, Bar Muscle-Up, Row, Rope Climb"},
-        {"Padrão": "Core", "Exercícios Principais": "Toes-to-Bar, Sit-ups, V-ups, Hollow Hold, Planks"}
-    ]
-    st.table(pd.DataFrame(exercicios_db))
+    st.markdown("Consulta e gerenciamento dos padrões de movimento monitorados pelo IACS (MCVS). Você pode editar, adicionar ou remover exercícios livremente.")
+    
+    # Inicializar os exercícios editáveis no session_state se não existirem
+    if "exercicios_editaveis" not in st.session_state:
+        st.session_state.exercicios_editaveis = [
+            {"Padrão": "Squat", "Exercícios Principais": "Back Squat, Front Squat, OHS, Wall Ball, Thruster, Lunges"},
+            {"Padrão": "Hinge", "Exercícios Principais": "Deadlift, RDL, Power Clean, Squat Clean, Snatch, KB Swing"},
+            {"Padrão": "Push", "Exercícios Principais": "Strict Press, Push Press, HSPU, Bench Press, Push-ups"},
+            {"Padrão": "Pull", "Exercícios Principais": "Pull-ups, Chest-to-Bar, Bar Muscle-Up, Row, Rope Climb"},
+            {"Padrão": "Core", "Exercícios Principais": "Toes-to-Bar, Sit-ups, V-ups, Hollow Hold, Planks"}
+        ]
+    
+    with st.expander("➕ Adicionar Novo Padrão / Exercício"):
+        with st.form("form_novo_exercicio"):
+            novo_padrao = st.text_input("Nome do Padrão (ex: Squat, Hinge, etc.)")
+            novos_itens = st.text_area("Exercícios Principais (separados por vírgula)")
+            if st.form_submit_button("Cadastrar Padrão"):
+                if novo_padrao.strip():
+                    st.session_state.exercicios_editaveis.append({
+                        "Padrão": novo_padrao.strip(),
+                        "Exercícios Principais": novos_itens.strip()
+                    })
+                    st.success("Novo padrão adicionado com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("O nome do padrão não pode estar vazio.")
+
+    st.markdown("---")
+    st.subheader("Padrões Cadastrados (Editáveis)")
+    
+    for idx, ex in enumerate(st.session_state.exercicios_editaveis):
+        with st.expander(f"✏️ {ex['Padrão']} — [{ex['Exercícios Principais'][:40]}...]"):
+            with st.form(key=f"form_edit_ex_{idx}"):
+                p_nome = st.text_input("Nome do Padrão", value=ex["Padrão"], key=f"p_nome_{idx}")
+                p_itens = st.text_area("Exercícios Principais", value=ex["Exercícios Principais"], key=f"p_itens_{idx}")
+                
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    salvar = st.form_submit_button("Salvar Alterações")
+                with col_btn2:
+                    remover = st.form_submit_button("🗑️ Excluir Padrão")
+                
+                if salvar:
+                    st.session_state.exercicios_editaveis[idx]["Padrão"] = p_nome
+                    st.session_state.exercicios_editaveis[idx]["Exercícios Principais"] = p_itens
+                    st.success("Alterações salvas com sucesso!")
+                    st.rerun()
+                if remover:
+                    st.session_state.exercicios_editaveis.pop(idx)
+                    st.success("Padrão removido com sucesso!")
+                    st.rerun()
+
 
 elif st.session_state.menu_escolhido == "Treinos Salvos":
     st.title("Histórico de Treinos Salvos")
