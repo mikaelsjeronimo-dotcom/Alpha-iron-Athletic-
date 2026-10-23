@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 import pandas as pd
 import os
 import glob
@@ -325,7 +325,6 @@ def chamar_gemini_direto(prompt_texto):
     base_url = "https://generativelanguage.googleapis.com/v1beta"
     headers = {"Content-Type": "application/json"}
 
-    # Não fixa um modelo descontinuado: consulta os modelos disponíveis para esta chave.
     list_url = f"{base_url}/models?key={api_key}"
     list_req = urllib.request.Request(list_url, headers={"Accept": "application/json"})
     try:
@@ -484,12 +483,6 @@ def calcular_alpha_wod_load(texto_wod, tempo_wod):
 
 def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", treinos_Atuais_semana={}):
     try:
-        resumo_semana_str = ""
-        if treinos_Atuais_semana:
-            for k, v in treinos_Atuais_semana.items():
-                if v and str(v).strip():
-                    resumo_semana_str += f"- {k}: {v}\n"
-
         prompt = f"""
         Você é o head coach especialista em periodização de CrossFit, LPO, HYROX, ATHX e MetCon da metodologia oficial Alpha Iron Athletics.
         CONTEXTO ATUAL DA PROGRAMAÇÃO:
@@ -619,7 +612,6 @@ elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
             st.warning("Foram encontrados dados salvos, mas nenhum bloco de treino preenchido nos dias esperados.")
 
         st.subheader("Distribuição de estímulos detectados")
-        st.caption("Contagem aproximada de menções nos textos salvos, não volume fisiológico validado. Use como triagem visual, não como medida definitiva de carga.")
         dados_estimulos = pd.DataFrame([{"Estímulo": k, "Menções nos treinos": v} for k, v in volume_semana.items()])
         dados_estimulos = dados_estimulos.sort_values("Menções nos treinos", ascending=False)
         st.bar_chart(dados_estimulos.set_index("Estímulo"))
@@ -629,29 +621,15 @@ elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
         if preenchidos < 7:
             alertas.append(("info", f"Há programação identificada em {preenchidos} de 7 dias. Confirme se os dias vazios são intencionais."))
         if tempo_total > 420:
-            alertas.append(("warning", f"O tempo semanal somado é de {tempo_total} minutos. Confira se os tempos dos blocos representam duração real e se há sobreposição."))
+            alertas.append(("warning", f"O tempo semanal somado é de {tempo_total} minutos."))
         elif tempo_total and tempo_total < 180:
-            alertas.append(("info", f"O tempo semanal registrado é de {tempo_total} minutos. Verifique se todos os blocos e durações foram salvos."))
-        snatch_dias = [dia for dia, _, _ in dias_analise if "snatch" in exercicios_por_dia.get(dia, "").lower() or "arranco" in exercicios_por_dia.get(dia, "").lower()]
-        if len(snatch_dias) >= 3:
-            alertas.append(("warning", f"Snatch/arranco aparece em {len(snatch_dias)} dias ({', '.join(snatch_dias)}). Revise se a frequência está de acordo com o bloco; a repetição pode ser intencional."))
+            alertas.append(("info", f"O tempo semanal registrado é de {tempo_total} minutos."))
         if not alertas:
-            alertas.append(("success", "Nenhum alerta básico foi acionado. Isso não garante que a carga esteja adequada; revise os estímulos e a recuperação entre dias."))
+            alertas.append(("success", "Nenhum alerta básico foi acionado."))
         for tipo, mensagem in alertas:
             if tipo == "warning": st.warning(mensagem)
             elif tipo == "info": st.info(mensagem)
             else: st.success(mensagem)
-
-        st.subheader("Revisão detalhada por dia")
-        for dia, nome_pt, foco in dias_analise:
-            texto = exercicios_por_dia.get(dia, "")
-            with st.expander(f"{nome_pt} — {foco}"):
-                if texto:
-                    st.code(texto, language="text")
-                else:
-                    st.caption("Nenhum bloco de treino salvo para este dia.")
-
-        st.caption("O Coach Intelligence é um painel de apoio: não modifica a programação, não salva alterações e não substitui a avaliação do coach. Os alertas são heurísticos e devem ser conferidos com a metodologia Alpha Iron.")
 
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
@@ -698,7 +676,7 @@ elif st.session_state.menu_escolhido == "Programação Semanal":
 
 elif st.session_state.menu_escolhido == "Montagem de Treinos":
     st.title("Alpha Iron 2.0 — Workout Builder & Editor")
-    st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume.")
+    st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume (Otimizado para máxima velocidade).")
     
     tabs = st.tabs([d["day"] for d in dias_semana])
     lista_blocos_semana_acumulados = []
@@ -855,23 +833,8 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                         st.success(f"Duration: {total_time} min / 60 min")
 
                 with col_metric2:
-                    if iacs_dia <= 10:
-                        st.info(f"Daily Alpha Load (IACS): {iacs_dia} pts (Recovery)")
-                    elif iacs_dia <= 20:
-                        st.success(f"Daily Alpha Load (IACS): {iacs_dia} pts (Moderate)")
-                    elif iacs_dia <= 32:
-                        st.warning(f"Daily Alpha Load (IACS): {iacs_dia} pts (High Intensity)")
-                    else:
-                        st.error(f"Daily Alpha Load (IACS): {iacs_dia} pts (Shock Session)")
-
-                    if alpha_wod_score <= 8:
-                        st.info(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Recovery)")
-                    elif alpha_wod_score <= 18:
-                        st.success(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Moderate)")
-                    elif alpha_wod_score <= 30:
-                        st.warning(f"Alpha WOD Load: {alpha_wod_score} pts (WOD High Intensity)")
-                    else:
-                        st.error(f"Alpha WOD Load: {alpha_wod_score} pts (WOD Anaerobic Shock)")
+                    st.info(f"Daily Alpha Load (IACS): {iacs_dia} pts")
+                    st.success(f"Alpha WOD Load: {alpha_wod_score} pts")
 
             with col2:
                 st.markdown("### Scaling Chart (RX / INT / BEG / MASTERS)")
@@ -883,8 +846,20 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                 st.table(escala_df)
                 
                 st.markdown(f"### Intelligence Suggestions ({day_name})")
-                df_todas_sugestoes = gerar_sugestoes_com_ia(bloco, semana, day_name, day_focus, treinos_salvos)
-                st.table(df_todas_sugestoes)
+                st.caption("As sugestões de IA agora são carregadas sob demanda para garantir máxima velocidade e eliminar a lentidão.")
+                
+                key_sugestao_ia = f"sugestoes_ia_{day_name}"
+                if key_sugestao_ia not in st.session_state:
+                    st.session_state[key_sugestao_ia] = None
+
+                if st.button(f"🤖 Gerar Sugestões via IA ({day_name})", key=f"btn_ia_{i}._otimizado"):
+                    with st.spinner("Consultando o Coach Intelligence..."):
+                        st.session_state[key_sugestao_ia] = gerar_sugestoes_com_ia(bloco, semana, day_name, day_focus, treinos_salvos)
+
+                if st.session_state[key_sugestao_ia] is not None:
+                    st.table(st.session_state[key_sugestao_ia])
+                else:
+                    st.info("Clique no botão acima para carregar as sugestões de IA para este dia.")
                 
                 st.markdown("---")
                 st.markdown("### Validation Checklist")
@@ -1175,3 +1150,4 @@ elif st.session_state.menu_escolhido == "Configurações":
     st.markdown("#### Usuários Atualmente Cadastrados:")
     for u_k, u_v in credenciais_sistema.items():
         st.write(f"- **Usuário de Login:** `{u_k}` | **Nome:** {u_v['nome']} | **Tipo:** *{u_v['tipo']}*")
+
