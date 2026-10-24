@@ -116,22 +116,22 @@ if query_params.get("modo") == "tv_antiga":
     </head>
     <body>
         <h1>ALPHA IRON ATHLETICS — WOD TV</h1>
-        <div class="subtitle">📅 Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
+        <div class="subtitle"> Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
         
         <div class="container">
             <div class="card">
-                <h3>⚡ Warm-Up ({w_t} min)</h3>
+                <h3> Warm-Up ({w_t} min)</h3>
                 <pre>{w_txt}</pre>
                 
-                <h3>🏋️ Strength ({s_t} min)</h3>
+                <h3> Strength ({s_t} min)</h3>
                 <pre>{s_txt}</pre>
             </div>
             
             <div class="card">
-                <h3>🔥 WOD / Main Block ({m_t} min)</h3>
+                <h3> WOD / Main Block ({m_t} min)</h3>
                 <pre>{m_txt}</pre>
                 
-                <h3>🧘 Mobility ({r_t} min)</h3>
+                <h3> Mobility ({r_t} min)</h3>
                 <pre>{r_txt}</pre>
             </div>
         </div>
@@ -215,33 +215,33 @@ if query_params.get("modo") == "tv":
 
     col_tv_1, col_tv_2 = st.columns([1, 1])
     with col_tv_1:
-        st.markdown(f"### ⚡ Warm-Up & Prep ({w_t} min)")
+        st.markdown(f"###  Warm-Up & Prep ({w_t} min)")
         if w_txt:
             st.code(w_txt, language="text")
         else:
             st.info("Nenhum aquecimento cadastrado para hoje.")
             
         if s_txt:
-            st.markdown(f"### 🏋️ Strength / Força ({s_t} min)")
+            st.markdown(f"###  Strength / Força ({s_t} min)")
             st.code(s_txt, language="text")
             
         if l_txt:
-            st.markdown(f"### 🎯 Skill / Técnica ({l_t} min)")
+            st.markdown(f"###  Skill / Técnica ({l_t} min)")
             st.code(l_txt, language="text")
 
     with col_tv_2:
         if m_txt:
-            st.markdown(f"### 🔥 WOD / Main Block ({m_t} min)")
+            st.markdown(f"###  WOD / Main Block ({m_t} min)")
             st.code(m_txt, language="text")
         else:
             st.info("Nenhum WOD principal cadastrado para hoje.")
 
         if a_txt:
-            st.markdown(f"### 🛡️ Accessory ({a_t} min)")
+            st.markdown(f"###  Accessory ({a_t} min)")
             st.code(a_txt, language="text")
 
         if r_txt:
-            st.markdown(f"### 🧘 Mobility ({r_t} min)")
+            st.markdown(f"###  Mobility ({r_t} min)")
             st.code(r_txt, language="text")
 
     st.stop()
@@ -1140,7 +1140,7 @@ elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
             with st.spinner("Conectando com o Gemini..."):
                 try:
                     resposta_ia = chamar_gemini_direto(mensagem_teste)
-                    st.success("🎉 Resposta recebida com sucesso da API!")
+                    st.success(" Resposta recebida com sucesso da API!")
                     st.markdown("### Resposta do Gemini:")
                     st.info(resposta_ia)
                 except Exception as e:
