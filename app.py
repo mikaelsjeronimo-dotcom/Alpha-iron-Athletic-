@@ -19,7 +19,6 @@ st.set_page_config(
 # ==========================================
 query_params = st.query_params
 if query_params.get("modo") == "tv_antiga":
-    # Fuso horário do Brasil (Brasília)
     fuso_br = timezone(timedelta(hours=-3))
     agora_br = datetime.now(fuso_br)
     dias_ingles = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -54,7 +53,6 @@ if query_params.get("modo") == "tv_antiga":
     r_t = dados_treinos.get(f"{dia_atual_str}_t_r", 5)
     r_txt = dados_treinos.get(f"{dia_atual_str}_r", "Nenhum cadastro")
 
-    # HTML Puro e Estático otimizado para navegadores antigos (com Auto-Refresh de 5 minutos)
     html_raiz = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -140,7 +138,7 @@ if query_params.get("modo") == "tv_antiga":
     </body>
     </html>
     """
-    st.markdown(html_raiz, unsafe_allow_html=True)
+    st.components.v1.html(html_raiz, height=900, scrolling=True)
     st.stop()
 
 
