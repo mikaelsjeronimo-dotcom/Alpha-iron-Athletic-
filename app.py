@@ -10,12 +10,37 @@ import urllib.error
 from datetime import datetime, timezone, timedelta
 
 st.set_page_config(
-    page_title="Alpha Iron Athletics 2.0 — Sistema de Gestão",
+    page_title="Alpha Iron Athletics 2.0 — Sistema de Gestão", 
     layout="wide"
 )
 
 # ==========================================
-# MODO TV ANTIGA (WOD TV Raiz para TV LG / Navegadores Antigos)
+# FUNÇÃO PARA CAPTURAR A IMAGEM DE FUNDO EM BASE64
+# ==========================================
+def obter_fundo_base64():
+    nomes_possiveis = ["alpha_iron.jpg", "alpha_iron.png", "Alpha_Iron.jpg", "Alpha_Iron.png"]
+    for nome in nomes_possiveis:
+        if os.path.exists(nome):
+            with open(nome, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode()
+    arquivos = glob.glob("*.jpg") + glob.glob("*.png") + glob.glob("*.jpeg")
+    for f in arquivos:
+        if "alpha" in f.lower() or "iron" in f.lower():
+            with open(f, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode()
+    return None
+
+img_bg_base64 = obter_fundo_base64()
+
+# Estilo de fundo dinâmico (com imagem se existir, ou escuro padrão)
+if img_bg_base64:
+    css_bg_geral = f'background: linear-gradient(rgba(14, 17, 23, 0.85), rgba(14, 17, 23, 0.92)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;'
+else:
+    css_bg_geral = 'background-color: #0e1117;'
+
+
+# ==========================================
+# MODO TV ANTIGA (WOD TV Raiz com Fundo Personalizado)
 # ==========================================
 query_params = st.query_params
 if query_params.get("modo") == "tv_antiga":
@@ -23,7 +48,7 @@ if query_params.get("modo") == "tv_antiga":
     agora_br = datetime.now(fuso_br)
     dias_ingles = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     dia_atual_str = dias_ingles[agora_br.weekday()]
-   
+    
     dias_traducao_pt = {
         "Monday": "Segunda-feira — HYROX",
         "Tuesday": "Terça-feira — CrossFit (Strength / LPO)",
@@ -53,6 +78,8 @@ if query_params.get("modo") == "tv_antiga":
     r_t = dados_treinos.get(f"{dia_atual_str}_t_r", 5)
     r_txt = dados_treinos.get(f"{dia_atual_str}_r", "Nenhum cadastro")
 
+    bg_style_html = f'background: linear-gradient(rgba(14, 17, 23, 0.88), rgba(14, 17, 23, 0.94)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-attachment: fixed;' if img_bg_base64 else 'background-color: #0e1117;'
+
     html_raiz = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -62,7 +89,7 @@ if query_params.get("modo") == "tv_antiga":
         <title>ALPHA IRON WOD TV</title>
         <style>
             body {{
-                background-color: #0e1117;
+                {bg_style_html}
                 color: #f0f2f6;
                 font-family: Arial, sans-serif;
                 margin: 0;
@@ -71,21 +98,22 @@ if query_params.get("modo") == "tv_antiga":
             h1 {{
                 color: #00E5FF;
                 text-align: center;
-                font-size: 36px;
+                font-size: 38px;
                 margin-bottom: 5px;
+                text-shadow: 0 2px 10px rgba(0,0,0,0.8);
             }}
             h3 {{
                 color: #00E5FF;
-                font-size: 24px;
+                font-size: 22px;
                 border-bottom: 2px solid #00E5FF;
                 padding-bottom: 5px;
-                margin-top: 20px;
+                margin-top: 15px;
             }}
             .subtitle {{
                 text-align: center;
                 color: #9ca3af;
                 font-size: 20px;
-                margin-bottom: 30px;
+                margin-bottom: 25px;
             }}
             .container {{
                 display: flex;
@@ -93,21 +121,22 @@ if query_params.get("modo") == "tv_antiga":
                 flex-wrap: wrap;
             }}
             .card {{
-                background-color: #161920;
-                border: 1px solid #2a2f3a;
+                background-color: rgba(22, 25, 32, 0.88);
+                border: 1px solid rgba(0, 229, 255, 0.3);
                 border-radius: 10px;
                 padding: 20px;
                 width: 45%;
                 min-width: 300px;
                 margin-bottom: 20px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+                backdrop-filter: blur(5px);
             }}
             pre {{
-                background-color: #0b0d12;
+                background-color: rgba(11, 13, 18, 0.9);
                 color: #ffffff;
                 padding: 15px;
                 border-radius: 6px;
-                font-size: 18px;
+                font-size: 17px;
                 white-space: pre-wrap;
                 word-wrap: break-word;
                 font-family: 'Courier New', Courier, monospace;
@@ -116,22 +145,22 @@ if query_params.get("modo") == "tv_antiga":
     </head>
     <body>
         <h1>ALPHA IRON ATHLETICS — WOD TV</h1>
-        <div class="subtitle"> Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
-       
+        <div class="subtitle">📅 Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
+        
         <div class="container">
             <div class="card">
-                <h3> Warm-Up ({w_t} min)</h3>
+                <h3>⚡ Warm-Up ({w_t} min)</h3>
                 <pre>{w_txt}</pre>
-               
-                <h3> Strength ({s_t} min)</h3>
+                
+                <h3>🏋️ Strength ({s_t} min)</h3>
                 <pre>{s_txt}</pre>
             </div>
-           
+            
             <div class="card">
-                <h3> WOD / Main Block ({m_t} min)</h3>
+                <h3>🔥 WOD / Main Block ({m_t} min)</h3>
                 <pre>{m_txt}</pre>
-               
-                <h3> Mobility ({r_t} min)</h3>
+                
+                <h3>🧘 Mobility ({r_t} min)</h3>
                 <pre>{r_txt}</pre>
             </div>
         </div>
@@ -143,24 +172,24 @@ if query_params.get("modo") == "tv_antiga":
 
 
 # ==========================================
-# MODO WOD TV ORIGINAL (Streamlit Cloud)
+# MODO WOD TV MODERNA (Com Fundo Personalizado)
 # ==========================================
-query_params = st.query_params
 if query_params.get("modo") == "tv":
-    st.markdown("""
+    st.markdown(f"""
         <style>
-        [data-testid="stHeader"], [data-testid="stSidebar"], footer {display: none !important;}
-        body, .stApp { background-color: #0e1117 !important; color: #f0f2f6 !important; }
+        [data-testid="stHeader"], [data-testid="stSidebar"], footer {{display: none !important;}}
+        .stApp {{ {css_bg_geral} color: #f0f2f6 !important; }}
+        div.stMarkdown, div.element-container {{ background-color: rgba(22, 25, 32, 0.75); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.2); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }}
         </style>
     """, unsafe_allow_html=True)
-   
+    
     st.markdown("<h1 style='text-align: center; color: #00E5FF; font-size: 38px;'>ALPHA IRON ATHLETICS — WOD TV</h1>", unsafe_allow_html=True)
-   
+    
     fuso_br = timezone(timedelta(hours=-3))
     agora_br = datetime.now(fuso_br)
     dias_ingles = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     dia_atual_str = dias_ingles[agora_br.weekday()]
-   
+    
     dias_traducao_pt = {
         "Monday": "Segunda-feira — HYROX",
         "Tuesday": "Terça-feira — CrossFit (Strength / LPO)",
@@ -215,33 +244,33 @@ if query_params.get("modo") == "tv":
 
     col_tv_1, col_tv_2 = st.columns([1, 1])
     with col_tv_1:
-        st.markdown(f"###  Warm-Up & Prep ({w_t} min)")
+        st.markdown(f"### ⚡ Warm-Up & Prep ({w_t} min)")
         if w_txt:
             st.code(w_txt, language="text")
         else:
             st.info("Nenhum aquecimento cadastrado para hoje.")
-           
+            
         if s_txt:
-            st.markdown(f"###  Strength / Força ({s_t} min)")
+            st.markdown(f"### 🏋️ Strength / Força ({s_t} min)")
             st.code(s_txt, language="text")
-           
+            
         if l_txt:
-            st.markdown(f"###  Skill / Técnica ({l_t} min)")
+            st.markdown(f"### 🎯 Skill / Técnica ({l_t} min)")
             st.code(l_txt, language="text")
 
     with col_tv_2:
         if m_txt:
-            st.markdown(f"###  WOD / Main Block ({m_t} min)")
+            st.markdown(f"### 🔥 WOD / Main Block ({m_t} min)")
             st.code(m_txt, language="text")
         else:
             st.info("Nenhum WOD principal cadastrado para hoje.")
 
         if a_txt:
-            st.markdown(f"###  Accessory ({a_t} min)")
+            st.markdown(f"### 🛡️ Accessory ({a_t} min)")
             st.code(a_txt, language="text")
 
         if r_txt:
-            st.markdown(f"###  Mobility ({r_t} min)")
+            st.markdown(f"### 🧘 Mobility ({r_t} min)")
             st.code(r_txt, language="text")
 
     st.stop()
@@ -251,49 +280,33 @@ if query_params.get("modo") == "tv":
 # SISTEMA PRINCIPAL
 # ==========================================
 
-def obter_fundo_base64():
-    nomes_possiveis = ["alpha_iron.jpg", "alpha_iron.png", "Alpha_Iron.jpg", "Alpha_Iron.png"]
-    for nome in nomes_possiveis:
-        if os.path.exists(nome):
-            with open(nome, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode()
-    arquivos = glob.glob("*.jpg") + glob.glob("*.png") + glob.glob("*.jpeg")
-    for f in arquivos:
-        if "alpha" in f.lower() or "iron" in f.lower():
-            with open(f, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode()
-    return None
+css_bg_main = f'.stApp {{ {css_bg_geral} color: #f0f2f6; }}'
 
-img_bg_base64 = obter_fundo_base64()
-
-if img_bg_base64:
-    css_bg = f'.stApp {{ background: linear-gradient(rgba(14, 17, 23, 0.85), rgba(14, 17, 23, 0.92)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; color: #f0f2f6; }}' if img_bg_base64 else '.stApp { background-color: #0e1117; color: #f0f2f6; }'
-
-st.markdown("""
+st.markdown(f"""
     <style>
-    """ + css_bg + """
-    [data-testid="stHeader"] {
+    {css_bg_main}
+    [data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
-    }
-    [data-testid="stSidebar"] {
-        background-color: rgba(14, 17, 23, 0.45) !important;
+    }}
+    [data-testid="stSidebar"] {{
+        background-color: rgba(14, 17, 23, 0.7) !important;
         backdrop-filter: blur(8px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    h1, h2, h3, h4 {
+    }}
+    h1, h2, h3, h4 {{
         color: #00E5FF !important;
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
         letter-spacing: -0.5px;
-    }
-    .stTabs [data-baseweb="tab-list"] {
+    }}
+    .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
         background-color: rgba(18, 20, 24, 0.85);
         padding: 6px;
         border-radius: 12px;
         border: 1px solid #22262d;
-    }
-    .stTabs [data-baseweb="tab"] {
+    }}
+    .stTabs [data-baseweb="tab"] {{
         background-color: rgba(26, 29, 36, 0.9);
         color: #9ca3af;
         border-radius: 8px;
@@ -301,49 +314,46 @@ st.markdown("""
         font-weight: 600;
         border: none !important;
         outline: none !important;
-    }
-    .stTabs [data-baseweb="tab"]:focus {
+    }}
+    .stTabs [data-baseweb="tab"]:focus {{
         background-color: rgba(35, 39, 48, 0.95) !important;
         color: #00E5FF !important;
         box-shadow: none !important;
-    }
-    .stTabs [aria-selected="true"] {
+    }}
+    .stTabs [aria-selected="true"] {{
         background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%) !important;
         color: #0e1117 !important;
         border-radius: 8px !important;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3) !important;
         border: none !important;
-    }
-    .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {
-        background-color: transparent !important;
-    }
-    .stTextInput input, .stTextArea textarea {
+    }}
+    .stTextInput input, .stTextArea textarea {{
         background-color: rgba(22, 25, 32, 0.9) !important;
         color: #ffffff !important;
         border: 1px solid #2a2f3a !important;
         border-radius: 8px !important;
-    }
-    .stTextInput input:focus, .stTextArea textarea:focus {
+    }}
+    .stTextInput input:focus, .stTextArea textarea:focus {{
         border-color: #00E5FF !important;
         box-shadow: 0 0 5px rgba(0, 229, 255, 0.3) !important;
-    }
-    [data-testid="stMetricValue"] {
+    }}
+    [data-testid="stMetricValue"] {{
         color: #ffffff !important;
         font-size: 24px !important;
-    }
-    [data-testid="stMetricLabel"] {
+    }}
+    [data-testid="stMetricLabel"] {{
         color: #9ca3af !important;
-    }
-    table {
+    }}
+    table {{
         background-color: rgba(22, 25, 32, 0.88) !important;
         border-radius: 8px;
         color: #e5e7eb !important;
-    }
-    th {
+    }}
+    th {{
         background-color: rgba(31, 36, 45, 0.95) !important;
         color: #00E5FF !important;
-    }
-    .stButton button {
+    }}
+    .stButton button {{
         background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%);
         color: #0e1117;
         font-weight: 700;
@@ -352,12 +362,12 @@ st.markdown("""
         padding: 0.6rem 1.2rem;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
         transition: all 0.3s ease;
-    }
-    .stButton button:hover {
+    }}
+    .stButton button:hover {{
         background: linear-gradient(135deg, #0066ff 0%, #33edff 100%);
         box-shadow: 0 6px 16px rgba(0, 229, 255, 0.5);
         transform: translateY(-1px);
-    }
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -423,12 +433,12 @@ if not st.session_state.autenticado:
         carregar_logo_sidebar()
         st.markdown("<h2 style='text-align: center; color: #00E5FF;'>Alpha Iron Athletics</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #9ca3af;'>Faça login para acessar o sistema</p>", unsafe_allow_html=True)
-       
+        
         with st.form("form_login"):
             username_input = st.text_input("Usuário")
             password_input = st.text_input("Senha", type="password")
             btn_login = st.form_submit_button("Entrar no Sistema", use_container_width=True)
-           
+            
             if btn_login:
                 user_lower = username_input.strip().lower()
                 if user_lower in credenciais_sistema and credenciais_sistema[user_lower]["senha"] == password_input:
@@ -475,13 +485,13 @@ if "menu_escolhido" not in st.session_state:
 opcoes_menu = [
     "Início (Dashboard)",
     "Programação Semanal",
-    "WOD TV (Para a TV)",
-    "Coach Intelligence",
+    "🖥️ WOD TV (Para a TV)",
+    "🧠 Coach Intelligence",
     "Montagem de Treinos",
     "Biblioteca de WODs",
     "Biblioteca de Exercícios",
     "Treinos Salvos",
-    "Teste de Diagnóstico da IA",
+    "🤖 Teste de Diagnóstico da IA",
     "Configurações"
 ]
 
@@ -510,7 +520,7 @@ semana = st.sidebar.selectbox("Periodization Week", [
 
 def obter_metas_volume(bloco_sel, semana_sel):
     base = {
-        "Squat": 140, "Hinge": 90, "Push": 80, "Pull": 80,
+        "Squat": 140, "Hinge": 90, "Push": 80, "Pull": 80, 
         "Core": 100, "Snatch": 45, "Clean & Jerk": 50, "Run": 8.0
     }
     if "Block 1" in bloco_sel or "Strength" in bloco_sel:
@@ -535,7 +545,7 @@ def obter_metas_volume(bloco_sel, semana_sel):
         fator = 1.30
     elif "Deload" in semana_sel or "Week 4" in semana_sel:
         fator = 0.65
-       
+        
     return {
         "Squat": int(base["Squat"] * fator),
         "Hinge": int(base["Hinge"] * fator),
@@ -691,9 +701,9 @@ def extrair_volume_acumulado_estruturado(lista_blocos_dados):
 
 def calcular_iacs_de_vol(vol_dict, eh_especial=False):
     score = (
-        (vol_dict["Squat"] * 0.12) + (vol_dict["Hinge"] * 0.15) +
-        (vol_dict["Push"] * 0.12) + (vol_dict["Pull"] * 0.12) +
-        (vol_dict["Core"] * 0.08) + (vol_dict["Snatch"] * 0.2) +
+        (vol_dict["Squat"] * 0.12) + (vol_dict["Hinge"] * 0.15) + 
+        (vol_dict["Push"] * 0.12) + (vol_dict["Pull"] * 0.12) + 
+        (vol_dict["Core"] * 0.08) + (vol_dict["Snatch"] * 0.2) + 
         (vol_dict["Clean & Jerk"] * 0.2) + (vol_dict["Run"] * 3)
     )
     if eh_especial:
@@ -728,7 +738,7 @@ def gerar_sugestoes_com_ia(bloco_sel, semana_sel, dia_nome="", focus_dia="", tre
         - Semana do Ciclo: {semana_sel}
         - Dia Sendo Montado: {dia_nome}
         - Foco Obrigatório do Dia: {focus_dia}
-       
+        
         Retorne APENAS um JSON estrito contendo uma lista de objetos com as chaves exatas "Session Block" e "Recommended Programming". Não coloque nenhum texto explicativo ou markdown fora do JSON.
         """
         txt_resp = chamar_gemini_direto(prompt)
@@ -760,7 +770,7 @@ treinos_salvos = carregar_treinos_salvos()
 if st.session_state.menu_escolhido == "Início (Dashboard)":
     st.title("Alpha Iron Athletics — Painel Principal")
     st.markdown("Bem-vindo ao centro de comando da periodização e montagem de treinos da metodologia Alpha.")
-   
+    
     col_d1, col_d2, col_d3 = st.columns(3)
     with col_d1:
         st.metric("Fase Atual", bloco.split(" - ")[1])
@@ -771,7 +781,7 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
 
     st.markdown("---")
     st.subheader("Atalhos Rápidos")
-   
+    
     col_a1, col_a2, col_a3 = st.columns(3)
     with col_a1:
         if st.button("Programação Semanal"):
@@ -788,13 +798,13 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
 
 elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
     st.title("🖥️ WOD TV — Tela para a TV do Box (LG 42LN5700)")
-    st.markdown("Se a TV for moderna, use o link normal. Se for a TV antiga com erro de conexão SSL, use o **Link Raiz** abaixo:")
-   
+    st.markdown("Agora a WOD TV já herda exatamente a mesma imagem de fundo personalizada do seu sistema!")
+    
     link_tv_nuvem = "https://mikaelsjeronimo-dotcom-alpha-iron-athletic--app-d1qo92.streamlit.app/?modo=tv"
     link_tv_raiz = "https://mikaelsjeronimo-dotcom-alpha-iron-athletic--app-d1qo92.streamlit.app/?modo=tv_antiga"
-   
+    
     st.success(f"📺 **Link para TV Moderna:** `{link_tv_nuvem}`")
-    st.warning(f"📺 **Link para TV Antiga (Modo Raiz):** `{link_tv_raiz}`")
+    st.warning(f"📺 **Link para TV Antiga (Modo Raiz com Fundo):** `{link_tv_raiz}`")
 
 elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
     st.title("🧠 Coach Intelligence")
@@ -882,22 +892,22 @@ elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
 elif st.session_state.menu_escolhido == "Programação Semanal":
     st.title("Programação Semanal Alpha Iron")
     st.markdown("Consulte de forma limpa e objetiva o planejamento completo dos treinos de toda a semana.")
-   
+    
     dia_selecionado = st.selectbox("Selecione o Dia para Consulta Rápida", [d["day"] + " — " + d["focus"] for d in dias_semana])
     dia_idx = [d["day"] + " — " + d["focus"] for d in dias_semana].index(dia_selecionado)
     d_info = dias_semana[dia_idx]
     d_name = d_info["day"]
-   
+    
     st.markdown(f"### Ficha Técnica: {d_name} ({d_info['focus']})")
-   
+    
     w_t = treinos_salvos.get(f"{d_name}_t_w", 10)
     w_txt = treinos_salvos.get(f"{d_name}_w", "Não cadastrado")
     m_t = treinos_salvos.get(f"{d_name}_t_m", 15)
     m_txt = treinos_salvos.get(f"{d_name}_m", "Não cadastrado")
-   
+    
     st.markdown(f"**1. Warm-Up ({w_t} min):**")
     st.code(w_txt, language="text")
-   
+    
     if d_name not in ["Monday", "Friday"]:
         s_t = treinos_salvos.get(f"{d_name}_t_s", 15)
         s_txt = treinos_salvos.get(f"{d_name}_s", "Não cadastrado")
@@ -907,7 +917,7 @@ elif st.session_state.menu_escolhido == "Programação Semanal":
         a_txt = treinos_salvos.get(f"{d_name}_a", "Não cadastrado")
         r_t = treinos_salvos.get(f"{d_name}_t_r", 5)
         r_txt = treinos_salvos.get(f"{d_name}_r", "Não cadastrado")
-       
+        
         st.markdown(f"**2. Strength ({s_t} min):**")
         st.code(s_txt, language="text")
         st.markdown(f"**3. Skill ({l_t} min):**")
@@ -925,7 +935,7 @@ elif st.session_state.menu_escolhido == "Programação Semanal":
 elif st.session_state.menu_escolhido == "Montagem de Treinos":
     st.title("Alpha Iron 2.0 — Workout Builder & Editor")
     st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume (Otimizado para máxima velocidade).")
-   
+    
     tabs = st.tabs([d["day"] for d in dias_semana])
     lista_blocos_semana_acumulados = []
     dados_para_salvar = {}
@@ -934,10 +944,10 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
         day_info = dias_semana[i]
         day_name = day_info["day"]
         day_focus = day_info["focus"]
-       
+        
         with tab:
             st.subheader(f"{day_name} — {day_focus}")
-           
+            
             with st.expander("Ferramenta de Duplicação Rápida"):
                 col_dup1, col_dup2 = st.columns([2, 1])
                 with col_dup1:
@@ -950,29 +960,29 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                         treinos_salvos[f"{dia_destino}_m"] = treinos_salvos.get(f"{day_name}_m", "")
                         salvar_treinos_disco(treinos_salvos)
                         st.success(f"Treino duplicado com sucesso para {dia_destino}!")
-           
+            
             col1, col2 = st.columns([1.3, 1])
             lista_blocos_do_dia = []
             m_input_atual = ""
-           
+            
             with col1:
                 st.markdown("### Session Structure (60 min)")
                 t_s, t_m = 0, 0
-               
+                
                 if day_name == "Monday":
                     st.info("HYROX Session: Running + Functional Stations")
                     c1, c2 = st.columns([1, 4])
                     with c1: t_w = st.text_input("Warm (min)", value=str(treinos_salvos.get(f"{day_name}_t_w", "10")), key=f"t_hy_w_{i}")
                     with c2: w_input = st.text_area("Warm-Up Descrição", treinos_salvos.get(f"{day_name}_w", "Dynamic Mobility"), height=75, key=f"hy_w_{i}")
-                   
+                    
                     c3, c4 = st.columns([1, 4])
                     with c3: t_m = st.text_input("Main (min)", value=str(treinos_salvos.get(f"{day_name}_t_m", "40")), key=f"t_hy_m_{i}")
                     with c4: m_input_atual = st.text_area("HYROX Main Block", treinos_salvos.get(f"{day_name}_m", "Running + Stations"), height=110, key=f"hy_m_{i}")
-                   
+                    
                     c5, c6 = st.columns([1, 4])
                     with c5: t_r = st.text_input("Mob (min)", value=str(treinos_salvos.get(f"{day_name}_t_r", "10")), key=f"t_hy_r_{i}")
                     with c6: r_input = st.text_area("Mobility Descrição", treinos_salvos.get(f"{day_name}_r", "Stretching"), height=75, key=f"hy_r_{i}")
-                   
+                    
                     tw_val = int(t_w) if t_w.isdigit() else 0
                     tm_val = int(t_m) if t_m.isdigit() else 0
                     tr_val = int(t_r) if t_r.isdigit() else 0
@@ -1044,7 +1054,7 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                     tm_val = int(t_m) if t_m.isdigit() else 0
                     ta_val = int(t_a) if t_a.isdigit() else 0
                     tr_val = int(t_r) if t_r.isdigit() else 0
-                   
+                    
                     total_time = tw_val + ts_val + tl_val + tm_val + ta_val + tr_val
 
                     lista_blocos_do_dia = [
@@ -1052,7 +1062,7 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                         {"texto": l_input, "tempo": tl_val}, {"texto": m_input_atual, "tempo": tm_val},
                         {"texto": a_input, "tempo": ta_val}
                     ]
-                   
+                    
                     dados_para_salvar.update({
                         f"{day_name}_t_w": tw_val, f"{day_name}_w": w_input,
                         f"{day_name}_t_s": ts_val, f"{day_name}_s": s_input,
@@ -1067,13 +1077,13 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                 vol_dia = extrair_volume_acumulado_estruturado(lista_blocos_do_dia)
                 eh_especial = ("HYROX" in day_focus or "ATHX" in day_focus)
                 iacs_dia = calcular_iacs_de_vol(vol_dia, eh_especial)
-               
+                
                 tm_wod_val = int(t_m) if 't_m' in locals() and str(t_m).isdigit() else 15
                 alpha_wod_score = calcular_alpha_wod_load(m_input_atual, tm_wod_val)
 
                 st.markdown("---")
                 col_metric1, col_metric2 = st.columns(2)
-               
+                
                 with col_metric1:
                     if total_time > 60:
                         st.warning(f"Duration: {total_time} min / 60 min")
@@ -1092,10 +1102,10 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                     "Gymnastics": ["Full Movement", "Medium Progression", "Basic Scale", "Range Focus"]
                 })
                 st.table(escala_df)
-               
+                
                 st.markdown(f"### Intelligence Suggestions ({day_name})")
                 st.caption("As sugestões de IA agora são carregadas sob demanda para garantir máxima velocidade e eliminar a lentidão.")
-               
+                
                 key_sugestao_ia = f"sugestoes_ia_{day_name}"
                 if key_sugestao_ia not in st.session_state:
                     st.session_state[key_sugestao_ia] = None
@@ -1108,7 +1118,7 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
                     st.table(st.session_state[key_sugestao_ia])
                 else:
                     st.info("Clique no botão acima para carregar as sugestões de IA para este dia.")
-               
+                
                 st.markdown("---")
                 st.markdown("### Validation Checklist")
                 st.checkbox("Session objective clearly defined?", value=True, key=f"chk1_{i}")
@@ -1121,18 +1131,18 @@ elif st.session_state.menu_escolhido == "Montagem de Treinos":
 elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
     st.title("🤖 Painel de Diagnóstico Direto da IA (Gemini API)")
     st.markdown("Envie qualquer mensagem ou comando de teste abaixo para verificar instantaneamente se a API está conectada e respondendo.")
-   
+    
     api_key_status = st.session_state.get("gemini_api_key", "")
     if not api_key_status and "GEMINI_API_KEY" in st.secrets:
         api_key_status = "Configurada via st.secrets"
-   
+    
     if api_key_status:
         st.success("✅ Chave da API detectada no sistema!")
     else:
         st.error("❌ Chave da API NÃO encontrada! Configure na aba Configurações ou nos Secrets.")
 
     mensagem_teste = st.text_input("Mensagem de Teste para o Gemini", value="Olá Gemini, você está operando na Alpha Iron Athletics?")
-   
+    
     if st.button("Enviar Mensagem de Teste"):
         if not api_key_status:
             st.error("Insira a chave da API primeiro.")
@@ -1140,7 +1150,7 @@ elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
             with st.spinner("Conectando com o Gemini..."):
                 try:
                     resposta_ia = chamar_gemini_direto(mensagem_teste)
-                    st.success(" Resposta recebida com sucesso da API!")
+                    st.success("🎉 Resposta recebida com sucesso da API!")
                     st.markdown("### Resposta do Gemini:")
                     st.info(resposta_ia)
                 except Exception as e:
@@ -1150,7 +1160,7 @@ elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
 elif st.session_state.menu_escolhido == "Biblioteca de WODs":
     st.title("Biblioteca de WODs Alpha — Benchmarks Oficiais")
     st.markdown("Clique em qualquer Benchmark abaixo para expandir, visualizar e **editar** o treino completo, tipo e movimentos conforme sua preferência.")
-   
+    
     if "benchmarks_editaveis" not in st.session_state:
         st.session_state.benchmarks_editaveis = {
             "The Girls": [
@@ -1205,13 +1215,13 @@ elif st.session_state.menu_escolhido == "Biblioteca de WODs":
                 {"Nome": "Rankel", "Tipo": "For Time", "Movimentos": "For Time: Run + Heavy Deadlifts + Burpee Pull-ups"}
             ]
         }
-   
+    
     categoria_escolhida = st.selectbox("Filtrar por Categoria", ["Todas as Categorias", "The Girls", "Weightlifting & Engine", "Hero WODs"])
-   
+    
     for cat, lista in st.session_state.benchmarks_editaveis.items():
         if categoria_escolhida != "Todas as Categorias" and categoria_escolhida != cat:
             continue
-           
+            
         st.markdown(f"### {cat}")
         for idx, wod in enumerate(lista):
             with st.expander(f"{wod['Nome']} — [{wod['Tipo']}]"):
@@ -1233,7 +1243,7 @@ elif st.session_state.menu_escolhido == "Biblioteca de WODs":
 elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
     st.title("Biblioteca de Exercícios & Padrões")
     st.markdown("Consulta e gerenciamento dos padrões de movimento monitorados pelo IACS (MCVS). Você pode editar, adicionar ou remover exercícios livremente.")
-   
+    
     if "exercicios_editaveis" not in st.session_state:
         st.session_state.exercicios_editaveis = [
             {"Padrão": "Squat", "Exercícios Principais": "Back Squat, Front Squat, OHS, Wall Ball, Thruster, Lunges"},
@@ -1242,7 +1252,7 @@ elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
             {"Padrão": "Pull", "Exercícios Principais": "Pull-ups, Chest-to-Bar, Bar Muscle-Up, Row, Rope Climb"},
             {"Padrão": "Core", "Exercícios Principais": "Toes-to-Bar, Sit-ups, V-ups, Hollow Hold, Planks"}
         ]
-   
+    
     with st.expander("➕ Adicionar Novo Padrão / Exercício"):
         with st.form("form_novo_exercicio"):
             novo_padrao = st.text_input("Nome do Padrão (ex: Squat, Hinge, etc.)")
@@ -1260,7 +1270,7 @@ elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
 
     st.markdown("---")
     st.subheader("Padrões Cadastrados (Editáveis)")
-   
+    
     for idx, ex in enumerate(st.session_state.exercicios_editaveis):
         with st.expander(f"✏️ {ex['Padrão']} — [{ex['Exercícios Principais'][:40]}...]"):
             with st.form(key=f"form_edit_ex_{idx}"):
@@ -1271,7 +1281,7 @@ elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
                     salvar = st.form_submit_button("Salvar Alterações")
                 with col_btn2:
                     remover = st.form_submit_button("🗑️ Excluir Padrão")
-               
+                
                 if salvar:
                     st.session_state.exercicios_editaveis[idx]["Padrão"] = p_nome
                     st.session_state.exercicios_editaveis[idx]["Exercícios Principais"] = p_itens
@@ -1285,7 +1295,7 @@ elif st.session_state.menu_escolhido == "Biblioteca de Exercícios":
 elif st.session_state.menu_escolhido == "Treinos Salvos":
     st.title("Histórico de Treinos Salvos")
     st.markdown("Visualize os treinos programados e salvos de forma organizada e limpa, exatamente igual à Biblioteca de WODs. Clique em qualquer dia para expandir os blocos.")
-   
+    
     if not treinos_salvos:
         st.info("Nenhum treino salvo no momento. Utilize a aba de Montagem de Treinos para registrar dados.")
     else:
@@ -1299,13 +1309,13 @@ elif st.session_state.menu_escolhido == "Treinos Salvos":
             "Sunday": "Domingo (Benchmark / Hero)"
         }
         dias_encontrados = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-       
+        
         for d in dias_encontrados:
             nome_amigavel = dias_traducao.get(d, d)
             chaves_dia = [k for k in treinos_salvos.keys() if k.startswith(d)]
             if not chaves_dia:
                 continue
-               
+                
             w_t = treinos_salvos.get(f"{d}_t_w", 0)
             w_txt = treinos_salvos.get(f"{d}_w", "")
             s_t = treinos_salvos.get(f"{d}_t_s", 0)
@@ -1320,10 +1330,10 @@ elif st.session_state.menu_escolhido == "Treinos Salvos":
             r_txt = treinos_salvos.get(f"{d}_r", "")
             e_t = treinos_salvos.get(f"{d}_t_e", 0)
             e_txt = treinos_salvos.get(f"{d}_e", "")
-           
+            
             if not any([w_txt, s_txt, l_txt, m_txt, a_txt, r_txt, e_txt]):
                 continue
-               
+                
             with st.expander(f"📅 {nome_amigavel}"):
                 if w_txt:
                     st.markdown(f"**1. Warm-Up ({w_t} min):**")
@@ -1350,12 +1360,12 @@ elif st.session_state.menu_escolhido == "Treinos Salvos":
 elif st.session_state.menu_escolhido == "Configurações":
     st.title("Configurações do Sistema & Gestão de Usuários")
     st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0 e controle de acesso.")
-   
+    
     st.subheader("Informações da Unidade")
     st.text_input("Nome da Unidade", value="Alpha Iron Athletics - São Paulo")
     st.text_input("Responsável Técnico", value="Mikael Santos")
     st.selectbox("Tema da Interface", ["Dark Alpha (Padrão)", "High Contrast"])
-   
+    
     st.markdown("---")
     st.subheader("🤖 Configuração da Inteligência Artificial (Gemini API)")
     st.markdown("Insira sua chave de API do Google Gemini para ativar as **Intelligence Suggestions** com IA em tempo real.")
@@ -1365,17 +1375,17 @@ elif st.session_state.menu_escolhido == "Configurações":
         st.success("Chave de IA salva com sucesso para esta sessão!")
     if st.button("Salvar Configurações"):
         st.success("Configurações atualizadas com sucesso!")
-       
+        
     st.markdown("---")
     st.subheader("👥 Cadastro e Gestão de Usuários (Login)")
     st.markdown("Cadastre novos usuários/coaches para que cada um tenha seu próprio acesso com senha e treinos salvos isoladamente.")
-   
+    
     with st.form("form_cadastrar_usuario_novo"):
         novo_username = st.text_input("Nome de Usuário para Login (ex: coachjoao)")
         novo_nome_completo = st.text_input("Nome Completo / Apelido")
         nova_senha = st.text_input("Senha de Acesso", type="password")
         tipo_user = st.selectbox("Nível de Acesso", ["Treinador / Coach", "Administrador"])
-       
+        
         if st.form_submit_button("Cadastrar Novo Usuário"):
             if novo_username.strip() and nova_senha.strip():
                 u_key = novo_username.strip().lower()
@@ -1394,7 +1404,7 @@ elif st.session_state.menu_escolhido == "Configurações":
                     st.warning("Este nome de usuário já existe.")
             else:
                 st.error("Preencha o usuário e a senha.")
-               
+                
     st.markdown("#### Usuários Atualmente Cadastrados:")
     for u_k, u_v in credenciais_sistema.items():
         st.write(f"- **Usuário de Login:** `{u_k}` | **Nome:** {u_v['nome']} | **Tipo:** *{u_v['tipo']}*")
