@@ -34,141 +34,10 @@ if img_bg_base64:
 else:
     css_bg_geral = 'background-color: #0e1117;'
 
-
-# ==========================================
-# MODO TV ANTIGA (WOD TV Raiz / Autônoma)
-# ==========================================
-query_params = st.query_params
-if query_params.get("modo") == "tv_antiga":
-    fuso_br = timezone(timedelta(hours=-3))
-    agora_br = datetime.now(fuso_br)
-    dias_ingles = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    dia_atual_str = dias_ingles[agora_br.weekday()]
-    
-    dias_traducao_pt = {
-        "Monday": "Segunda-feira — HYROX",
-        "Tuesday": "Terça-feira — CrossFit (Strength / LPO)",
-        "Wednesday": "Quarta-feira — CrossFit (Gymnastics)",
-        "Thursday": "Quinta-feira — CrossFit (Strength / LPO)",
-        "Friday": "Sexta-feira — ATHX",
-        "Saturday": "Sábado — Community WOD",
-        "Sunday": "Domingo — Benchmark / Hero WOD"
-    }
-
-    db_alvo = "treinos_salvos_mikael.json"
-    dados_treinos = {}
-    if os.path.exists(db_alvo):
-        try:
-            with open(db_alvo, "r", encoding="utf-8") as f_db:
-                dados_treinos = json.load(f_db)
-        except Exception:
-            pass
-
-    nome_dia_exibicao = dias_traducao_pt.get(dia_atual_str, dia_atual_str)
-    w_t = dados_treinos.get(f"{dia_atual_str}_t_w", 10)
-    w_txt = dados_treinos.get(f"{dia_atual_str}_w", "Nenhum cadastro")
-    s_t = dados_treinos.get(f"{dia_atual_str}_t_s", 15)
-    s_txt = dados_treinos.get(f"{dia_atual_str}_s", "Nenhum cadastro")
-    m_t = dados_treinos.get(f"{dia_atual_str}_t_m", 15)
-    m_txt = dados_treinos.get(f"{dia_atual_str}_m", "Nenhum cadastro")
-    r_t = dados_treinos.get(f"{dia_atual_str}_t_r", 5)
-    r_txt = dados_treinos.get(f"{dia_atual_str}_r", "Nenhum cadastro")
-
-    bg_style_html = f'background: linear-gradient(rgba(14, 17, 23, 0.88), rgba(14, 17, 23, 0.94)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-attachment: fixed;' if img_bg_base64 else 'background-color: #0e1117;'
-
-    html_raiz = f"""
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="refresh" content="300">
-        <title>ALPHA IRON WOD TV</title>
-        <style>
-            body {{
-                {bg_style_html}
-                color: #f0f2f6;
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 20px;
-            }}
-            h1 {{
-                color: #00E5FF;
-                text-align: center;
-                font-size: 38px;
-                margin-bottom: 5px;
-                text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-            }}
-            h3 {{
-                color: #00E5FF;
-                font-size: 22px;
-                border-bottom: 2px solid #00E5FF;
-                padding-bottom: 5px;
-                margin-top: 15px;
-            }}
-            .subtitle {{
-                text-align: center;
-                color: #9ca3af;
-                font-size: 20px;
-                margin-bottom: 25px;
-            }}
-            .container {{
-                display: flex;
-                justify-content: space-around;
-                flex-wrap: wrap;
-            }}
-            .card {{
-                background-color: rgba(22, 25, 32, 0.88);
-                border: 1px solid rgba(0, 229, 255, 0.3);
-                border-radius: 10px;
-                padding: 20px;
-                width: 45%;
-                min-width: 300px;
-                margin-bottom: 20px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.7);
-            }}
-            pre {{
-                background-color: rgba(11, 13, 18, 0.9);
-                color: #ffffff;
-                padding: 15px;
-                border-radius: 6px;
-                font-size: 17px;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                font-family: 'Courier New', Courier, monospace;
-            }}
-        </style>
-    </head>
-    <body>
-        <h1>ALPHA IRON ATHLETICS — WOD TV</h1>
-        <div class="subtitle">📅 Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
-        
-        <div class="container">
-            <div class="card">
-                <h3>⚡ Warm-Up ({w_t} min)</h3>
-                <pre>{w_txt}</pre>
-                
-                <h3>🏋️ Strength ({s_t} min)</h3>
-                <pre>{s_txt}</pre>
-            </div>
-            
-            <div class="card">
-                <h3>🔥 WOD / Main Block ({m_t} min)</h3>
-                <pre>{m_txt}</pre>
-                
-                <h3>🧘 Mobility ({r_t} min)</h3>
-                <pre>{r_txt}</pre>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    st.components.v1.html(html_raiz, height=900, scrolling=True)
-    st.stop()
-
-
 # ==========================================
 # MODO WOD TV MODERNA
 # ==========================================
+query_params = st.query_params
 if query_params.get("modo") == "tv":
     st.markdown(f"""
         <style>
@@ -444,8 +313,33 @@ treinos_salvos = carregar_treinos_salvos()
 
 if st.session_state.menu_escolhido == "Início (Dashboard)":
     st.title("Alpha Iron Athletics — Painel Principal")
-    st.markdown("Bem-vindo ao centro de comando da periodização e montagem de treinos.")
+    st.markdown("Bem-vindo ao centro de comando da periodização e montagem de treinos da metodologia Alpha.")
     
+    col_d1, col_d2, col_d3 = st.columns(3)
+    with col_d1:
+        st.metric("Fase Atual", bloco.split(" - ")[1])
+    with col_d2:
+        st.metric("Ciclo Semanal", semana.split(" - ")[1])
+    with col_d3:
+        st.metric("Status da Base", "Sincronizado")
+
+    st.markdown("---")
+    st.subheader("Atalhos Rápidos")
+    
+    col_a1, col_a2, col_a3 = st.columns(3)
+    with col_a1:
+        if st.button("Programação Semanal"):
+            st.session_state.menu_escolhido = "Programação Semanal"
+            st.rerun()
+    with col_a2:
+        if st.button("Montar / Editar Treinos"):
+            st.session_state.menu_escolhido = "Montagem de Treinos"
+            st.rerun()
+    with col_a3:
+        if st.button("Treinos Salvos"):
+            st.session_state.menu_escolhido = "Treinos Salvos"
+            st.rerun()
+
 elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
     st.title("🖥️ WOD TV — Tela para a TV do Box")
     st.markdown("Como a TV antiga bloqueia links seguros da nuvem por causa do certificado SSL, criamos a opção de **Baixar a WOD TV em arquivo HTML** para rodar direto nela sem erros!")
@@ -530,11 +424,13 @@ elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
         st.success("Arquivo gerado com sucesso! Clique no botão acima para baixar.")
 
 elif st.session_state.menu_escolhido == "Montagem de Treinos":
-    st.title("Alpha Iron 2.0 — Workout Builder")
-    st.markdown("Monte e ajuste os blocos diários.")
+    st.title("Alpha Iron 2.0 — Workout Builder & Editor")
+    st.markdown("Monte e ajuste os blocos diários com salvamento automático e controle de volume.")
 
 elif st.session_state.menu_escolhido == "Treinos Salvos":
     st.title("Histórico de Treinos Salvos")
+    st.markdown("Visualize os treinos programados e salvos de forma organizada.")
 
 elif st.session_state.menu_escolhido == "Configurações":
-    st.title("Configurações do Sistema")
+    st.title("Configurações do Sistema & Gestão de Usuários")
+    st.markdown("Ajustes gerais do ambiente Alpha Iron 2.0 e controle de acesso.")
