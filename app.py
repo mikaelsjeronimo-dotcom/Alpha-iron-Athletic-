@@ -237,12 +237,12 @@ if "menu_escolhido" not in st.session_state:
 opcoes_menu = [
     "Início (Dashboard)",
     "Programação Semanal",
-    "🧠 Coach Intelligence",
+    "Coach Intelligence",
     "Montagem de Treinos",
     "Biblioteca de WODs",
     "Biblioteca de Exercícios",
     "Treinos Salvos",
-    "🤖 Teste de Diagnóstico da IA",
+    "Teste de Diagnóstico da IA",
     "Configurações"
 ]
 
