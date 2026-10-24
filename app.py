@@ -806,8 +806,8 @@ elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
     st.success(f"📺 **Link para TV Moderna:** `{link_tv_nuvem}`")
     st.warning(f"📺 **Link para TV Antiga (Modo Raiz com Fundo):** `{link_tv_raiz}`")
 
-elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
-    st.title("🧠 Coach Intelligence")
+elif st.session_state.menu_escolhido == "Coach Intelligence":
+    st.title("Coach Intelligence")
     st.markdown("Painel de apoio à decisão para revisar a programação salva. Ele não altera nem gera treinos automaticamente.")
     st.caption(f"Análise da programação salva • {bloco} • {semana}")
 
