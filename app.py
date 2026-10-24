@@ -15,7 +15,32 @@ st.set_page_config(
 )
 
 # ==========================================
-# MODO TV ANTIGA (WOD TV Raiz para TV LG / Navegadores Antigos)
+# FUNÇÃO PARA CAPTURAR A IMAGEM DE FUNDO EM BASE64
+# ==========================================
+def obter_fundo_base64():
+    nomes_possiveis = ["alpha_iron.jpg", "alpha_iron.png", "Alpha_Iron.jpg", "Alpha_Iron.png"]
+    for nome in nomes_possiveis:
+        if os.path.exists(nome):
+            with open(nome, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode()
+    arquivos = glob.glob("*.jpg") + glob.glob("*.png") + glob.glob("*.jpeg")
+    for f in arquivos:
+        if "alpha" in f.lower() or "iron" in f.lower():
+            with open(f, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode()
+    return None
+
+img_bg_base64 = obter_fundo_base64()
+
+# Estilo de fundo dinâmico (com imagem se existir, ou escuro padrão)
+if img_bg_base64:
+    css_bg_geral = f'background: linear-gradient(rgba(14, 17, 23, 0.85), rgba(14, 17, 23, 0.92)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed;'
+else:
+    css_bg_geral = 'background-color: #0e1117;'
+
+
+# ==========================================
+# MODO TV ANTIGA (WOD TV Raiz com Fundo Personalizado)
 # ==========================================
 query_params = st.query_params
 if query_params.get("modo") == "tv_antiga":
@@ -53,6 +78,8 @@ if query_params.get("modo") == "tv_antiga":
     r_t = dados_treinos.get(f"{dia_atual_str}_t_r", 5)
     r_txt = dados_treinos.get(f"{dia_atual_str}_r", "Nenhum cadastro")
 
+    bg_style_html = f'background: linear-gradient(rgba(14, 17, 23, 0.88), rgba(14, 17, 23, 0.94)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-attachment: fixed;' if img_bg_base64 else 'background-color: #0e1117;'
+
     html_raiz = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -62,7 +89,7 @@ if query_params.get("modo") == "tv_antiga":
         <title>ALPHA IRON WOD TV</title>
         <style>
             body {{
-                background-color: #0e1117;
+                {bg_style_html}
                 color: #f0f2f6;
                 font-family: Arial, sans-serif;
                 margin: 0;
@@ -71,21 +98,22 @@ if query_params.get("modo") == "tv_antiga":
             h1 {{
                 color: #00E5FF;
                 text-align: center;
-                font-size: 36px;
+                font-size: 38px;
                 margin-bottom: 5px;
+                text-shadow: 0 2px 10px rgba(0,0,0,0.8);
             }}
             h3 {{
                 color: #00E5FF;
-                font-size: 24px;
+                font-size: 22px;
                 border-bottom: 2px solid #00E5FF;
                 padding-bottom: 5px;
-                margin-top: 20px;
+                margin-top: 15px;
             }}
             .subtitle {{
                 text-align: center;
                 color: #9ca3af;
                 font-size: 20px;
-                margin-bottom: 30px;
+                margin-bottom: 25px;
             }}
             .container {{
                 display: flex;
@@ -93,21 +121,22 @@ if query_params.get("modo") == "tv_antiga":
                 flex-wrap: wrap;
             }}
             .card {{
-                background-color: #161920;
-                border: 1px solid #2a2f3a;
+                background-color: rgba(22, 25, 32, 0.88);
+                border: 1px solid rgba(0, 229, 255, 0.3);
                 border-radius: 10px;
                 padding: 20px;
                 width: 45%;
                 min-width: 300px;
                 margin-bottom: 20px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+                backdrop-filter: blur(5px);
             }}
             pre {{
-                background-color: #0b0d12;
+                background-color: rgba(11, 13, 18, 0.9);
                 color: #ffffff;
                 padding: 15px;
                 border-radius: 6px;
-                font-size: 18px;
+                font-size: 17px;
                 white-space: pre-wrap;
                 word-wrap: break-word;
                 font-family: 'Courier New', Courier, monospace;
@@ -116,22 +145,22 @@ if query_params.get("modo") == "tv_antiga":
     </head>
     <body>
         <h1>ALPHA IRON ATHLETICS — WOD TV</h1>
-        <div class="subtitle"> Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
+        <div class="subtitle">📅 Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
         
         <div class="container">
             <div class="card">
-                <h3> Warm-Up ({w_t} min)</h3>
+                <h3>⚡ Warm-Up ({w_t} min)</h3>
                 <pre>{w_txt}</pre>
                 
-                <h3> Strength ({s_t} min)</h3>
+                <h3>🏋️ Strength ({s_t} min)</h3>
                 <pre>{s_txt}</pre>
             </div>
             
             <div class="card">
-                <h3> WOD / Main Block ({m_t} min)</h3>
+                <h3>🔥 WOD / Main Block ({m_t} min)</h3>
                 <pre>{m_txt}</pre>
                 
-                <h3> Mobility ({r_t} min)</h3>
+                <h3>🧘 Mobility ({r_t} min)</h3>
                 <pre>{r_txt}</pre>
             </div>
         </div>
@@ -143,14 +172,14 @@ if query_params.get("modo") == "tv_antiga":
 
 
 # ==========================================
-# MODO WOD TV ORIGINAL (Streamlit Cloud)
+# MODO WOD TV MODERNA (Com Fundo Personalizado)
 # ==========================================
-query_params = st.query_params
 if query_params.get("modo") == "tv":
-    st.markdown("""
+    st.markdown(f"""
         <style>
-        [data-testid="stHeader"], [data-testid="stSidebar"], footer {display: none !important;}
-        body, .stApp { background-color: #0e1117 !important; color: #f0f2f6 !important; }
+        [data-testid="stHeader"], [data-testid="stSidebar"], footer {{display: none !important;}}
+        .stApp {{ {css_bg_geral} color: #f0f2f6 !important; }}
+        div.stMarkdown, div.element-container {{ background-color: rgba(22, 25, 32, 0.75); padding: 15px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.2); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }}
         </style>
     """, unsafe_allow_html=True)
     
@@ -215,33 +244,33 @@ if query_params.get("modo") == "tv":
 
     col_tv_1, col_tv_2 = st.columns([1, 1])
     with col_tv_1:
-        st.markdown(f"###  Warm-Up & Prep ({w_t} min)")
+        st.markdown(f"### ⚡ Warm-Up & Prep ({w_t} min)")
         if w_txt:
             st.code(w_txt, language="text")
         else:
             st.info("Nenhum aquecimento cadastrado para hoje.")
             
         if s_txt:
-            st.markdown(f"###  Strength / Força ({s_t} min)")
+            st.markdown(f"### 🏋️ Strength / Força ({s_t} min)")
             st.code(s_txt, language="text")
             
         if l_txt:
-            st.markdown(f"###  Skill / Técnica ({l_t} min)")
+            st.markdown(f"### 🎯 Skill / Técnica ({l_t} min)")
             st.code(l_txt, language="text")
 
     with col_tv_2:
         if m_txt:
-            st.markdown(f"###  WOD / Main Block ({m_t} min)")
+            st.markdown(f"### 🔥 WOD / Main Block ({m_t} min)")
             st.code(m_txt, language="text")
         else:
             st.info("Nenhum WOD principal cadastrado para hoje.")
 
         if a_txt:
-            st.markdown(f"###  Accessory ({a_t} min)")
+            st.markdown(f"### 🛡️ Accessory ({a_t} min)")
             st.code(a_txt, language="text")
 
         if r_txt:
-            st.markdown(f"###  Mobility ({r_t} min)")
+            st.markdown(f"### 🧘 Mobility ({r_t} min)")
             st.code(r_txt, language="text")
 
     st.stop()
@@ -251,49 +280,33 @@ if query_params.get("modo") == "tv":
 # SISTEMA PRINCIPAL
 # ==========================================
 
-def obter_fundo_base64():
-    nomes_possiveis = ["alpha_iron.jpg", "alpha_iron.png", "Alpha_Iron.jpg", "Alpha_Iron.png"]
-    for nome in nomes_possiveis:
-        if os.path.exists(nome):
-            with open(nome, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode()
-    arquivos = glob.glob("*.jpg") + glob.glob("*.png") + glob.glob("*.jpeg")
-    for f in arquivos:
-        if "alpha" in f.lower() or "iron" in f.lower():
-            with open(f, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode()
-    return None
+css_bg_main = f'.stApp {{ {css_bg_geral} color: #f0f2f6; }}'
 
-img_bg_base64 = obter_fundo_base64()
-
-if img_bg_base64:
-    css_bg = f'.stApp {{ background: linear-gradient(rgba(14, 17, 23, 0.85), rgba(14, 17, 23, 0.92)), url("data:image/jpeg;base64,{img_bg_base64}"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; color: #f0f2f6; }}' if img_bg_base64 else '.stApp { background-color: #0e1117; color: #f0f2f6; }'
-
-st.markdown("""
+st.markdown(f"""
     <style>
-    """ + css_bg + """
-    [data-testid="stHeader"] {
+    {css_bg_main}
+    [data-testid="stHeader"] {{
         background-color: rgba(0,0,0,0) !important;
-    }
-    [data-testid="stSidebar"] {
-        background-color: rgba(14, 17, 23, 0.45) !important;
+    }}
+    [data-testid="stSidebar"] {{
+        background-color: rgba(14, 17, 23, 0.7) !important;
         backdrop-filter: blur(8px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    h1, h2, h3, h4 {
+    }}
+    h1, h2, h3, h4 {{
         color: #00E5FF !important;
         font-family: 'Helvetica Neue', sans-serif;
         font-weight: 700;
         letter-spacing: -0.5px;
-    }
-    .stTabs [data-baseweb="tab-list"] {
+    }}
+    .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
         background-color: rgba(18, 20, 24, 0.85);
         padding: 6px;
         border-radius: 12px;
         border: 1px solid #22262d;
-    }
-    .stTabs [data-baseweb="tab"] {
+    }}
+    .stTabs [data-baseweb="tab"] {{
         background-color: rgba(26, 29, 36, 0.9);
         color: #9ca3af;
         border-radius: 8px;
@@ -301,49 +314,46 @@ st.markdown("""
         font-weight: 600;
         border: none !important;
         outline: none !important;
-    }
-    .stTabs [data-baseweb="tab"]:focus {
+    }}
+    .stTabs [data-baseweb="tab"]:focus {{
         background-color: rgba(35, 39, 48, 0.95) !important;
         color: #00E5FF !important;
         box-shadow: none !important;
-    }
-    .stTabs [aria-selected="true"] {
+    }}
+    .stTabs [aria-selected="true"] {{
         background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%) !important;
         color: #0e1117 !important;
         border-radius: 8px !important;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3) !important;
         border: none !important;
-    }
-    .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {
-        background-color: transparent !important;
-    }
-    .stTextInput input, .stTextArea textarea {
+    }}
+    .stTextInput input, .stTextArea textarea {{
         background-color: rgba(22, 25, 32, 0.9) !important;
         color: #ffffff !important;
         border: 1px solid #2a2f3a !important;
         border-radius: 8px !important;
-    }
-    .stTextInput input:focus, .stTextArea textarea:focus {
+    }}
+    .stTextInput input:focus, .stTextArea textarea:focus {{
         border-color: #00E5FF !important;
         box-shadow: 0 0 5px rgba(0, 229, 255, 0.3) !important;
-    }
-    [data-testid="stMetricValue"] {
+    }}
+    [data-testid="stMetricValue"] {{
         color: #ffffff !important;
         font-size: 24px !important;
-    }
-    [data-testid="stMetricLabel"] {
+    }}
+    [data-testid="stMetricLabel"] {{
         color: #9ca3af !important;
-    }
-    table {
+    }}
+    table {{
         background-color: rgba(22, 25, 32, 0.88) !important;
         border-radius: 8px;
         color: #e5e7eb !important;
-    }
-    th {
+    }}
+    th {{
         background-color: rgba(31, 36, 45, 0.95) !important;
         color: #00E5FF !important;
-    }
-    .stButton button {
+    }}
+    .stButton button {{
         background: linear-gradient(135deg, #0051ff 0%, #00e5ff 100%);
         color: #0e1117;
         font-weight: 700;
@@ -352,12 +362,12 @@ st.markdown("""
         padding: 0.6rem 1.2rem;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
         transition: all 0.3s ease;
-    }
-    .stButton button:hover {
+    }}
+    .stButton button:hover {{
         background: linear-gradient(135deg, #0066ff 0%, #33edff 100%);
         box-shadow: 0 6px 16px rgba(0, 229, 255, 0.5);
         transform: translateY(-1px);
-    }
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -475,13 +485,13 @@ if "menu_escolhido" not in st.session_state:
 opcoes_menu = [
     "Início (Dashboard)",
     "Programação Semanal",
-    "WOD TV (Para a TV)",
-    "Coach Intelligence",
+    "🖥️ WOD TV (Para a TV)",
+    "🧠 Coach Intelligence",
     "Montagem de Treinos",
     "Biblioteca de WODs",
     "Biblioteca de Exercícios",
     "Treinos Salvos",
-    "Teste de Diagnóstico da IA",
+    "🤖 Teste de Diagnóstico da IA",
     "Configurações"
 ]
 
@@ -788,13 +798,13 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
 
 elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
     st.title("🖥️ WOD TV — Tela para a TV do Box (LG 42LN5700)")
-    st.markdown("Se a TV for moderna, use o link normal. Se for a TV antiga com erro de conexão SSL, use o **Link Raiz** abaixo:")
+    st.markdown("Agora a WOD TV já herda exatamente a mesma imagem de fundo personalizada do seu sistema!")
     
     link_tv_nuvem = "https://mikaelsjeronimo-dotcom-alpha-iron-athletic--app-d1qo92.streamlit.app/?modo=tv"
     link_tv_raiz = "https://mikaelsjeronimo-dotcom-alpha-iron-athletic--app-d1qo92.streamlit.app/?modo=tv_antiga"
     
     st.success(f"📺 **Link para TV Moderna:** `{link_tv_nuvem}`")
-    st.warning(f"📺 **Link para TV Antiga (Modo Raiz):** `{link_tv_raiz}`")
+    st.warning(f"📺 **Link para TV Antiga (Modo Raiz com Fundo):** `{link_tv_raiz}`")
 
 elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
     st.title("🧠 Coach Intelligence")
@@ -1140,7 +1150,7 @@ elif st.session_state.menu_escolhido == "🤖 Teste de Diagnóstico da IA":
             with st.spinner("Conectando com o Gemini..."):
                 try:
                     resposta_ia = chamar_gemini_direto(mensagem_teste)
-                    st.success(" Resposta recebida com sucesso da API!")
+                    st.success("🎉 Resposta recebida com sucesso da API!")
                     st.markdown("### Resposta do Gemini:")
                     st.info(resposta_ia)
                 except Exception as e:
