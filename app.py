@@ -15,7 +15,137 @@ st.set_page_config(
 )
 
 # ==========================================
-# MODO WOD TV (Exibição em Tela Cheia na TV)
+# MODO TV ANTIGA (WOD TV Raiz para TV LG / Navegadores Antigos)
+# ==========================================
+query_params = st.query_params
+if query_params.get("modo") == "tv_antiga":
+    # Fuso horário do Brasil (Brasília)
+    fuso_br = timezone(timedelta(hours=-3))
+    agora_br = datetime.now(fuso_br)
+    dias_ingles = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    dia_atual_str = dias_ingles[agora_br.weekday()]
+    
+    dias_traducao_pt = {
+        "Monday": "Segunda-feira — HYROX",
+        "Tuesday": "Terça-feira — CrossFit (Strength / LPO)",
+        "Wednesday": "Quarta-feira — CrossFit (Gymnastics)",
+        "Thursday": "Quinta-feira — CrossFit (Strength / LPO)",
+        "Friday": "Sexta-feira — ATHX",
+        "Saturday": "Sábado — Community WOD",
+        "Sunday": "Domingo — Benchmark / Hero WOD"
+    }
+
+    db_alvo = "treinos_salvos_mikael.json"
+    dados_treinos = {}
+    if os.path.exists(db_alvo):
+        try:
+            with open(db_alvo, "r", encoding="utf-8") as f_db:
+                dados_treinos = json.load(f_db)
+        except Exception:
+            pass
+
+    nome_dia_exibicao = dias_traducao_pt.get(dia_atual_str, dia_atual_str)
+    w_t = dados_treinos.get(f"{dia_atual_str}_t_w", 10)
+    w_txt = dados_treinos.get(f"{dia_atual_str}_w", "Nenhum cadastro")
+    s_t = dados_treinos.get(f"{dia_atual_str}_t_s", 15)
+    s_txt = dados_treinos.get(f"{dia_atual_str}_s", "Nenhum cadastro")
+    m_t = dados_treinos.get(f"{dia_atual_str}_t_m", 15)
+    m_txt = dados_treinos.get(f"{dia_atual_str}_m", "Nenhum cadastro")
+    r_t = dados_treinos.get(f"{dia_atual_str}_t_r", 5)
+    r_txt = dados_treinos.get(f"{dia_atual_str}_r", "Nenhum cadastro")
+
+    # HTML Puro e Estático otimizado para navegadores antigos (com Auto-Refresh de 5 minutos)
+    html_raiz = f"""
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="refresh" content="300">
+        <title>ALPHA IRON WOD TV</title>
+        <style>
+            body {{
+                background-color: #0e1117;
+                color: #f0f2f6;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 20px;
+            }}
+            h1 {{
+                color: #00E5FF;
+                text-align: center;
+                font-size: 36px;
+                margin-bottom: 5px;
+            }}
+            h3 {{
+                color: #00E5FF;
+                font-size: 24px;
+                border-bottom: 2px solid #00E5FF;
+                padding-bottom: 5px;
+                margin-top: 20px;
+            }}
+            .subtitle {{
+                text-align: center;
+                color: #9ca3af;
+                font-size: 20px;
+                margin-bottom: 30px;
+            }}
+            .container {{
+                display: flex;
+                justify-content: space-around;
+                flex-wrap: wrap;
+            }}
+            .card {{
+                background-color: #161920;
+                border: 1px solid #2a2f3a;
+                border-radius: 10px;
+                padding: 20px;
+                width: 45%;
+                min-width: 300px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            }}
+            pre {{
+                background-color: #0b0d12;
+                color: #ffffff;
+                padding: 15px;
+                border-radius: 6px;
+                font-size: 18px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Courier New', Courier, monospace;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>ALPHA IRON ATHLETICS — WOD TV</h1>
+        <div class="subtitle">📅 Hoje: <strong>{nome_dia_exibicao}</strong> (Atualização Automática)</div>
+        
+        <div class="container">
+            <div class="card">
+                <h3>⚡ Warm-Up ({w_t} min)</h3>
+                <pre>{w_txt}</pre>
+                
+                <h3>🏋️ Strength ({s_t} min)</h3>
+                <pre>{s_txt}</pre>
+            </div>
+            
+            <div class="card">
+                <h3>🔥 WOD / Main Block ({m_t} min)</h3>
+                <pre>{m_txt}</pre>
+                
+                <h3>🧘 Mobility ({r_t} min)</h3>
+                <pre>{r_txt}</pre>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    st.markdown(html_raiz, unsafe_allow_html=True)
+    st.stop()
+
+
+# ==========================================
+# MODO WOD TV ORIGINAL (Streamlit Cloud)
 # ==========================================
 query_params = st.query_params
 if query_params.get("modo") == "tv":
@@ -660,11 +790,13 @@ if st.session_state.menu_escolhido == "Início (Dashboard)":
 
 elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
     st.title("🖥️ WOD TV — Tela para a TV do Box (LG 42LN5700)")
-    st.markdown("Como o sistema está na nuvem, basta abrir o link especial abaixo diretamente no navegador da TV para exibir os treinos em tela cheia na parede!")
+    st.markdown("Se a TV for moderna, use o link normal. Se for a TV antiga com erro de conexão SSL, use o **Link Raiz** abaixo:")
     
     link_tv_nuvem = "https://mikaelsjeronimo-dotcom-alpha-iron-athletic--app-d1qo92.streamlit.app/?modo=tv"
-    st.success(f"📺 **Link Direto para a TV:** `{link_tv_nuvem}`")
-    st.markdown("Basta digitar esse link exato no navegador da TV (com `?modo=tv` no final) para abrir o painel limpo, com detecção automática do dia de hoje e em tela cheia!")
+    link_tv_raiz = "https://mikaelsjeronimo-dotcom-alpha-iron-athletic--app-d1qo92.streamlit.app/?modo=tv_antiga"
+    
+    st.success(f"📺 **Link para TV Moderna:** `{link_tv_nuvem}`")
+    st.warning(f"📺 **Link para TV Antiga (Modo Raiz):** `{link_tv_raiz}`")
 
 elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
     st.title("🧠 Coach Intelligence")
