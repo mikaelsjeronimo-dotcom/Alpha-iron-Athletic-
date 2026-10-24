@@ -805,10 +805,10 @@ elif st.session_state.menu_escolhido == "🖥️ WOD TV (Para a TV)":
     
     st.success(f"📺 **Link para TV Moderna:** `{link_tv_nuvem}`")
     st.warning(f"📺 **Link para TV Antiga (Modo Raiz com Fundo):** `{link_tv_raiz}`")
-
-elif st.session_state.menu_escolhido == "Coach Intelligence":
-    st.title("Coach Intelligence")
-    st.markdown("Painel de apoio à decisão para revisar a programação salva. Ele não altera nem gera treinos automaticamente.")
+        
+elif st.session_state.menu_escolhido == "🧠 Coach Intelligence":
+    st.title("🧠 Coach Intelligence")
+    st.markdown("Painel de apoio à decisão para revisar a programação salva com análise inteligente de estímulos.")
     st.caption(f"Análise da programação salva • {bloco} • {semana}")
 
     if not treinos_salvos:
@@ -858,6 +858,7 @@ elif st.session_state.menu_escolhido == "Coach Intelligence":
 
         preenchidos = len(linhas_dias)
         tempo_total = sum(l["Tempo planejado (min)"] for l in linhas_dias)
+        
         c1, c2, c3 = st.columns(3)
         c1.metric("Dias com programação", f"{preenchidos}/7")
         c2.metric("Tempo semanal planejado", f"{tempo_total} min")
@@ -874,63 +875,59 @@ elif st.session_state.menu_escolhido == "Coach Intelligence":
         dados_estimulos = dados_estimulos.sort_values("Menções nos treinos", ascending=False)
         st.bar_chart(dados_estimulos.set_index("Estímulo"))
 
-        st.subheader("Alertas para revisão do coach")
-        alertas = []
-        if preenchidos < 7:
-            alertas.append(("info", f"Há programação identificada em {preenchidos} de 7 dias. Confirme se os dias vazios são intencionais."))
-        if tempo_total > 420:
-            alertas.append(("warning", f"O tempo semanal somado é de {tempo_total} minutos."))
-        elif tempo_total and tempo_total < 180:
-            alertas.append(("info", f"O tempo semanal registrado é de {tempo_total} minutos."))
-        if not alertas:
-            alertas.append(("success", "Nenhum alerta básico foi acionado."))
-        for tipo, mensagem in alertas:
-            if tipo == "warning": st.warning(mensagem)
-            elif tipo == "info": st.info(mensagem)
-            else: st.success(mensagem)
-
-elif st.session_state.menu_escolhido == "Programação Semanal":
-    st.title("Programação Semanal Alpha Iron")
-    st.markdown("Consulte de forma limpa e objetiva o planejamento completo dos treinos de toda a semana.")
-    
-    dia_selecionado = st.selectbox("Selecione o Dia para Consulta Rápida", [d["day"] + " — " + d["focus"] for d in dias_semana])
-    dia_idx = [d["day"] + " — " + d["focus"] for d in dias_semana].index(dia_selecionado)
-    d_info = dias_semana[dia_idx]
-    d_name = d_info["day"]
-    
-    st.markdown(f"### Ficha Técnica: {d_name} ({d_info['focus']})")
-    
-    w_t = treinos_salvos.get(f"{d_name}_t_w", 10)
-    w_txt = treinos_salvos.get(f"{d_name}_w", "Não cadastrado")
-    m_t = treinos_salvos.get(f"{d_name}_t_m", 15)
-    m_txt = treinos_salvos.get(f"{d_name}_m", "Não cadastrado")
-    
-    st.markdown(f"**1. Warm-Up ({w_t} min):**")
-    st.code(w_txt, language="text")
-    
-    if d_name not in ["Monday", "Friday"]:
-        s_t = treinos_salvos.get(f"{d_name}_t_s", 15)
-        s_txt = treinos_salvos.get(f"{d_name}_s", "Não cadastrado")
-        l_t = treinos_salvos.get(f"{d_name}_t_l", 10)
-        l_txt = treinos_salvos.get(f"{d_name}_l", "Não cadastrado")
-        a_t = treinos_salvos.get(f"{d_name}_t_a", 5)
-        a_txt = treinos_salvos.get(f"{d_name}_a", "Não cadastrado")
-        r_t = treinos_salvos.get(f"{d_name}_t_r", 5)
-        r_txt = treinos_salvos.get(f"{d_name}_r", "Não cadastrado")
+        st.subheader("Alertas explicativos e sugestões de ajuste")
         
-        st.markdown(f"**2. Strength ({s_t} min):**")
-        st.code(s_txt, language="text")
-        st.markdown(f"**3. Skill ({l_t} min):**")
-        st.code(l_txt, language="text")
-        st.markdown(f"**4. WOD ({m_t} min):**")
-        st.code(m_txt, language="text")
-        st.markdown(f"**5. Accessory ({a_t} min):**")
-        st.code(a_txt, language="text")
-        st.markdown(f"**6. Mobility ({r_t} min):**")
-        st.code(r_txt, language="text")
-    else:
-        st.markdown(f"**Main Block / MetCon ({m_t} min):**")
-        st.code(m_txt, language="text")
+        # Lógica de análise explicativa
+        alertas_gerados = []
+        
+        if preenchidos < 7:
+            alertas_gerados.append({
+                "titulo": "Programação incompleta",
+                "tipo": "info",
+                "porque": f"Há programação identificada em apenas {preenchidos} de 7 dias.",
+                "sugestao": "Confirme se os dias restantes vazios são intencionais (como dias de descanso total)."
+            })
+            
+        if tempo_total > 420:
+            alertas_gerados.append({
+                "titulo": "Densidade de treino elevada",
+                "tipo": "warning",
+                "porque": f"O tempo semanal somado ultrapassou 420 minutos ({tempo_total} min), o que pode gerar fadiga acumulada excessiva.",
+                "sugestao": "Avalie encurtar os blocos acessórios ou redistribuir o volume para preservar a recuperação."
+            })
+            
+        # Verificar repetição consecutiva pesada (ex: Squat pesado seguido de Hinge pesado)
+        dias_ordem = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        for idx in range(len(dias_ordem) - 1):
+            dia_atual = dias_ordem[idx]
+            dia_seguinte = dias_ordem[idx+1]
+            txt_atual = exercicios_por_dia.get(dia_atual, "").lower()
+            txt_prox = exercicios_por_dia.get(dia_seguinte, "").lower()
+            
+            if ("snatch" in txt_atual or "clean" in txt_atual) and ("snatch" in txt_prox or "clean" in txt_prox):
+                alertas_gerados.append({
+                    "titulo": f"Possível sobreposição de LPO ({dias_analise[idx][1]} e {dias_analise[idx+1][1]})",
+                    "tipo": "warning",
+                    "porque": "Movimentos complexos de Levantamento de Peso Olímpico foram detectados em dias consecutivos.",
+                    "sugestao": "Verifique se a recuperação do sistema nervoso central está garantida para evitar queda de rendimento."
+                })
+                break # Evitar duplicar o mesmo aviso
+
+        if not alertas_gerados:
+            alertas_gerados.append({
+                "titulo": "Distribuição equilibrada",
+                "tipo": "success",
+                "porque": "Nenhum conflito crítico de volume ou sobreposição foi detectado na estrutura atual.",
+                "sugestao": "A programação está alinhada aos parâmetros da fase."
+            })
+
+        for alerta in alertas_gerados:
+            if alerta["tipo"] == "warning":
+                st.warning(f"⚠️ **{alerta['titulo']}**\n\n* **Por que este alerta foi gerado:** {alerta['porque']}\n* **Sugestão de ajuste:** {alerta['sugestao']}")
+            elif alerta["tipo"] == "info":
+                st.info(f"ℹ️ **{alerta['titulo']}**\n\n* **Por que este alerta foi gerado:** {alerta['porque']}\n* **Sugestão de ajuste:** {alerta['sugestao']}")
+            else:
+                st.success(f"✅ **{alerta['titulo']}**\n\n* **Análise:** {alerta['porque']}\n* **Status:** {alerta['sugestao']}")
 
 elif st.session_state.menu_escolhido == "Montagem de Treinos":
     st.title("Alpha Iron 2.0 — Workout Builder & Editor")
